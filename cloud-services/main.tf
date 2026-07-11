@@ -133,14 +133,15 @@ resource "aws_instance" "standby" {
   vpc_security_group_ids      = [aws_security_group.standby.id]
   associate_public_ip_address = true
 
-  user_data = base64encode(<<-EOF
-    #!/bin/bash
-    set -euo pipefail
-    hostnamectl set-hostname ${var.project_name}-standby-${count.index + 1}
-    apt-get update && apt-get install -y curl open-iscsi
-    curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server --node-taint standby=true:NoSchedule" sh -
-  EOF
-  )
+  user_data = base64encode(templatefile("${path.module}/cloud-init/node.yaml.tftpl", {
+    hostname  = "${var.project_name}-standby-${count.index + 1}"
+    node_role = count.index == 0 ? "server" : "agent"
+  }))
+
+  root_block_device {
+    volume_size = var.node_disk_gb
+    volume_type = "gp3"
+  }
 
   tags = {
     Name    = "${var.project_name}-standby-${count.index + 1}"

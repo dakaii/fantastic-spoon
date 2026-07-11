@@ -69,6 +69,7 @@ terraform apply -var="domain_name=yourdomain.com" -var="alert_email=you@example.
 
 ## Documentation
 
+- [Phase 1 Runbook — Primary cluster](docs/PHASE-1-RUNBOOK.md) ← **start here**
+- [Phase 2 Runbook — Standby + backups](docs/PHASE-2-RUNBOOK.md)
 - [AWS Architecture (locked design)](docs/AWS-ARCHITECTURE.md)
 - [Full technical blueprint](docs/ARCHITECTURE.md)
-- [Design decisions & cloud comparison](docs/DESIGN-DECISIONS.md)

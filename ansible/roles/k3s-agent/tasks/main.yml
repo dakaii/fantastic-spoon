@@ -1,18 +1,11 @@
 ---
-- name: Get k3s token from first server
-  ansible.builtin.slurp:
-    src: /var/lib/rancher/k3s/server/node-token
-  register: k3s_node_token
-  delegate_to: "{{ groups['k3s_server'][0] }}"
-  run_once: true
-
-- name: Install k3s agent
+- name: Join k3s agent to cluster
   ansible.builtin.shell: |
     curl -sfL https://get.k3s.io | \
       INSTALL_K3S_VERSION="{{ k3s_version }}" \
       K3S_URL="https://{{ hostvars[groups['k3s_server'][0]]['ansible_host'] }}:6443" \
-      K3S_TOKEN="{{ k3s_node_token.content | b64decode | trim }}" \
-      INSTALL_K3S_EXEC="agent" \
+      K3S_TOKEN="{{ hostvars[groups['k3s_server'][0]]['k3s_node_token'] }}" \
+      INSTALL_K3S_EXEC="agent{% if cluster_name == 'standby' %} --node-taint standby=true:NoSchedule{% endif %}" \
       sh -
   args:
     creates: /usr/local/bin/k3s-agent

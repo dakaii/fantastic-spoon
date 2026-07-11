@@ -1,0 +1,19 @@
+# Copy to terraform.tfvars and fill in values:
+# cp terraform.tfvars.example terraform.tfvars
+
+aws_region   = "us-east-1"
+project_name = "hybrid-k8s"
+
+# Required — no defaults
+ssh_public_key = "ssh-ed25519 AAAA... you@host"
+admin_cidr     = "203.0.113.10/32"  # your public IP — run: curl -s ifconfig.me
+
+# Dev profile (default): 1 control plane + 2 workers
+control_plane_count         = 1
+worker_count                = 2
+control_plane_instance_type = "t4g.small"
+worker_instance_type        = "t4g.small"
+
+# HA profile (uncomment to use):
+# control_plane_count = 3
+# worker_count        = 2

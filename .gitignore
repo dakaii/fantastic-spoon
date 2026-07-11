@@ -1,0 +1,24 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+.terraform.lock.hcl
+crash.log
+
+# Lambda build artifacts
+shared-services/lambda/*.zip
+
+# Ansible
+*.retry
+/tmp/ansible_facts
+
+# Secrets
+*.pem
+.env
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
