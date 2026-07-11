@@ -1,0 +1,12 @@
+# Copy to terraform.tfvars and fill in values:
+# cp terraform.tfvars.example terraform.tfvars
+
+aws_region   = "us-east-1"
+project_name = "hybrid-k8s"
+
+ssh_public_key = "ssh-ed25519 AAAA... you@host"
+admin_cidr     = "203.0.113.10/32"
+
+standby_node_count      = 2
+standby_instance_type   = "t4g.micro"
+backup_retention_days   = 30

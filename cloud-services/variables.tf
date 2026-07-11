@@ -11,15 +11,21 @@ variable "project_name" {
 }
 
 variable "standby_instance_type" {
-  description = "EC2 instance type for standby k3s nodes"
+  description = "EC2 instance type for standby k3s nodes (min 1 GB RAM — use t4g.micro)"
   type        = string
-  default     = "t4g.nano"
+  default     = "t4g.micro"
 }
 
 variable "standby_node_count" {
-  description = "Number of cloud standby nodes"
+  description = "Number of cloud standby nodes (1 server + N-1 agents)"
   type        = number
   default     = 2
+}
+
+variable "node_disk_gb" {
+  description = "Root volume size in GB for standby nodes"
+  type        = number
+  default     = 30
 }
 
 variable "ssh_public_key" {

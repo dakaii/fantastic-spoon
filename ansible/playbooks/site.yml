@@ -5,7 +5,7 @@
   roles:
     - common
 
-- name: Install k3s control plane (HA)
+- name: Install k3s control plane
   hosts: k3s_server
   become: true
   serial: 1
@@ -18,8 +18,16 @@
   roles:
     - k3s-agent
 
-- name: Deploy cluster add-ons
+- name: Deploy cluster add-ons (primary — full stack)
   hosts: k3s_server[0]
   become: true
+  when: cluster_profile | default('primary') == 'primary'
   roles:
     - k3s-addons
+
+- name: Deploy cluster add-ons (standby — lightweight)
+  hosts: k3s_server[0]
+  become: true
+  when: cluster_profile | default('primary') == 'standby'
+  roles:
+    - k3s-addons-standby
