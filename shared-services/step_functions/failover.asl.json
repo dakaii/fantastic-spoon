@@ -1,0 +1,38 @@
+{
+  "Comment": "Automated failover workflow for hybrid k8s platform",
+  "StartAt": "NotifyFailoverStart",
+  "States": {
+    "NotifyFailoverStart": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "${sns_topic_arn}",
+        "Subject": "Failover Workflow Started",
+        "Message.$": "States.Format('Failover triggered. Reason: {}', $.reason)"
+      },
+      "Next": "RestoreVeleroBackup"
+    },
+    "RestoreVeleroBackup": {
+      "Type": "Pass",
+      "Comment": "Run Velero restore on standby cluster — implement via Lambda or SSM Run Command",
+      "Result": {"status": "velero_restore_pending"},
+      "Next": "ActivateStandbyArgoCD"
+    },
+    "ActivateStandbyArgoCD": {
+      "Type": "Pass",
+      "Comment": "Patch Argo CD cluster labels: standby=active, scale app replicas — implement via Lambda",
+      "Result": {"status": "argocd_activation_pending"},
+      "Next": "NotifyFailoverComplete"
+    },
+    "NotifyFailoverComplete": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "${sns_topic_arn}",
+        "Subject": "FAILOVER COMPLETE",
+        "Message": "Traffic should now route to standby cluster via Route53. Verify manually until Velero/Argo CD steps are automated."
+      },
+      "End": true
+    }
+  }
+}

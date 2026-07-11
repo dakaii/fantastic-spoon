@@ -1,0 +1,19 @@
+# Argo CD on primary cluster — active GitOps controller.
+
+server:
+  service:
+    type: NodePort
+  replicas: 1
+
+configs:
+  params:
+    server.insecure: true
+
+extraObjects:
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: cluster-role
+      namespace: argocd
+    data:
+      role: active

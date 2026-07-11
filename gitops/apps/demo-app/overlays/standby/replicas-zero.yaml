@@ -1,0 +1,26 @@
+# Standby overlay — same app but scaled to zero until failover.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-app
+  namespace: demo-app
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: demo-app
+  template:
+    metadata:
+      labels:
+        app: demo-app
+    spec:
+      tolerations:
+        - key: standby
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+      containers:
+        - name: demo
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80

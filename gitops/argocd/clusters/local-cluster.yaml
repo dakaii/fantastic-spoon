@@ -6,6 +6,7 @@ metadata:
   labels:
     argocd.argoproj.io/secret-type: cluster
     environment: primary
+    role: active
 type: Opaque
 stringData:
   name: local-primary

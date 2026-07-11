@@ -89,6 +89,22 @@ resource "aws_security_group" "standby" {
   }
 
   ingress {
+    description = "HTTP"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "HTTPS"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
     description = "NodePort range"
     from_port   = 30000
     to_port     = 32767
@@ -127,8 +143,55 @@ resource "aws_instance" "standby" {
   )
 
   tags = {
-    Name = "${var.project_name}-standby-${count.index + 1}"
-    Role = "standby"
+    Name    = "${var.project_name}-standby-${count.index + 1}"
+    Role    = count.index == 0 ? "server" : "agent"
+    Cluster = "standby"
+  }
+}
+
+resource "aws_lb" "standby" {
+  name               = "${var.project_name}-standby-nlb"
+  internal           = false
+  load_balancer_type = "network"
+  subnets            = [aws_subnet.standby.id]
+
+  tags = {
+    Name = "${var.project_name}-standby-nlb"
+  }
+}
+
+resource "aws_lb_target_group" "standby_https" {
+  name     = "${var.project_name}-standby-tg"
+  port     = 30443
+  protocol = "TCP"
+  vpc_id   = aws_vpc.standby.id
+
+  health_check {
+    protocol = "TCP"
+    port     = "30443"
+  }
+}
+
+resource "aws_lb_target_group_attachment" "standby_workers" {
+  for_each = {
+    for idx, inst in aws_instance.standby :
+    inst.tags.Name => inst
+    if inst.tags.Role == "agent"
+  }
+
+  target_group_arn = aws_lb_target_group.standby_https.arn
+  target_id        = each.value.id
+  port             = 30443
+}
+
+resource "aws_lb_listener" "standby_https" {
+  load_balancer_arn = aws_lb.standby.arn
+  port              = 443
+  protocol          = "TCP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.standby_https.arn
   }
 }
 

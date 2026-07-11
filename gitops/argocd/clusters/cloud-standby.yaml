@@ -1,5 +1,5 @@
-# Register the cloud standby cluster with Argo CD.
-# Replace placeholders before applying.
+# Register the cloud standby cluster with PRIMARY Argo CD.
+# Also install a separate Argo CD instance ON the standby cluster (see gitops/argocd/standby/).
 apiVersion: v1
 kind: Secret
 metadata:
@@ -8,6 +8,7 @@ metadata:
   labels:
     argocd.argoproj.io/secret-type: cluster
     environment: standby
+    role: passive
 type: Opaque
 stringData:
   name: cloud-standby

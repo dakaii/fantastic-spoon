@@ -35,6 +35,50 @@ output "velero_secret_access_key" {
   sensitive   = true
 }
 
+output "standby_nlb_dns_name" {
+  description = "NLB DNS name for Route53 failover (standby record)"
+  value       = aws_lb.standby.dns_name
+}
+
+output "standby_nlb_zone_id" {
+  description = "NLB hosted zone ID for Route53 alias record"
+  value       = aws_lb.standby.zone_id
+}
+
+output "ansible_inventory" {
+  description = "Ansible inventory for standby cluster nodes"
+  value = yamlencode({
+    all = {
+      vars = {
+        ansible_user            = "ubuntu"
+        ansible_ssh_common_args = "-o StrictHostKeyChecking=no"
+        k3s_version             = "v1.29.5+k3s1"
+        cluster_name            = "standby"
+      }
+      children = {
+        k3s_server = {
+          hosts = {
+            for idx, inst in aws_instance.standby :
+            inst.tags.Name => {
+              ansible_host = inst.public_ip
+              node_role    = "server"
+            } if inst.tags.Role == "server"
+          }
+        }
+        k3s_agent = {
+          hosts = {
+            for idx, inst in aws_instance.standby :
+            inst.tags.Name => {
+              ansible_host = inst.public_ip
+              node_role    = "agent"
+            } if inst.tags.Role == "agent"
+          }
+        }
+      }
+    }
+  })
+}
+
 output "vpc_id" {
   description = "VPC ID for standby cluster"
   value       = aws_vpc.standby.id
