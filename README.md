@@ -22,7 +22,7 @@ Local (Primary)                    Cloud (Standby)
          └──────── Git (source of truth) ─────┘
 ```
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full technical blueprint.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full technical blueprint and [docs/DESIGN-DECISIONS.md](docs/DESIGN-DECISIONS.md) for cloud provider comparison and design choices.
 
 ## Project Structure
 
