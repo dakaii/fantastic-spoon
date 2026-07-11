@@ -2,8 +2,7 @@
 .terraform/
 *.tfstate
 *.tfstate.*
-*.tfvars
-!*.tfvars.example
+config/clusters.yaml
 .terraform.lock.hcl
 crash.log
 

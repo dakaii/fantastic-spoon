@@ -1,0 +1,40 @@
+# On-Prem Primary Cluster — Example Inventory
+#
+# Copy to ansible/inventory/on-prem.primary.yml and fill in your server IPs.
+# Then: ./scripts/bootstrap-cluster.sh primary
+
+all:
+  vars:
+    ansible_user: ubuntu
+    ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
+    k3s_version: "v1.29.5+k3s1"
+    cluster_name: primary
+    cluster_profile: primary
+    provisioner: on-prem
+
+    # Set after Traefik is installed — used for DNS failover
+    ingress_host: "192.168.1.10"
+    k3s_api_host: "192.168.1.10"
+
+  children:
+    k3s_server:
+      hosts:
+        onprem-cp-1:
+          ansible_host: 192.168.1.10
+          node_role: server
+        # Uncomment for HA control plane:
+        # onprem-cp-2:
+        #   ansible_host: 192.168.1.11
+        #   node_role: server
+        # onprem-cp-3:
+        #   ansible_host: 192.168.1.12
+        #   node_role: server
+
+    k3s_agent:
+      hosts:
+        onprem-worker-1:
+          ansible_host: 192.168.1.20
+          node_role: agent
+        onprem-worker-2:
+          ansible_host: 192.168.1.21
+          node_role: agent

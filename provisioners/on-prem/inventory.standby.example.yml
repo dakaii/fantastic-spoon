@@ -1,0 +1,29 @@
+# On-Prem Standby Cluster — Example Inventory (second site)
+#
+# Copy to ansible/inventory/on-prem.standby.yml
+# Use when standby is also on-prem (e.g. colo or second homelab site)
+
+all:
+  vars:
+    ansible_user: ubuntu
+    ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
+    k3s_version: "v1.29.5+k3s1"
+    cluster_name: standby
+    cluster_profile: standby
+    provisioner: on-prem
+
+    ingress_host: "192.168.2.10"
+    k3s_api_host: "192.168.2.10"
+
+  children:
+    k3s_server:
+      hosts:
+        standby-cp-1:
+          ansible_host: 192.168.2.10
+          node_role: server
+
+    k3s_agent:
+      hosts:
+        standby-worker-1:
+          ansible_host: 192.168.2.20
+          node_role: agent

@@ -41,6 +41,10 @@ output "ansible_inventory" {
         ansible_ssh_common_args = "-o StrictHostKeyChecking=no"
         k3s_version             = "v1.29.5+k3s1"
         cluster_name            = "primary"
+        cluster_profile           = "primary"
+        provisioner               = "aws-ec2"
+        ingress_host              = aws_lb.primary.dns_name
+        k3s_api_host              = [for name, inst in aws_instance.primary : inst.public_ip if inst.tags.Role == "server"][0]
       }
       children = {
         k3s_server = {
@@ -64,4 +68,16 @@ output "ansible_inventory" {
       }
     }
   })
+}
+
+output "cluster_meta" {
+  description = "Cluster metadata for failover scripts and bootstrap"
+  value = {
+    provisioner     = "aws-ec2"
+    cluster_name    = "primary"
+    cluster_profile = "primary"
+    ingress_host    = aws_lb.primary.dns_name
+    ingress_zone_id = aws_lb.primary.zone_id
+    k3s_api_host    = [for name, inst in aws_instance.primary : inst.public_ip if inst.tags.Role == "server"][0]
+  }
 }
