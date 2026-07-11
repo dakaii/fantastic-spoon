@@ -54,6 +54,10 @@ output "ansible_inventory" {
         ansible_ssh_common_args = "-o StrictHostKeyChecking=no"
         k3s_version             = "v1.29.5+k3s1"
         cluster_name            = "standby"
+        cluster_profile           = "standby"
+        provisioner               = "aws-ec2"
+        ingress_host              = aws_lb.standby.dns_name
+        k3s_api_host              = [for inst in aws_instance.standby : inst.public_ip if inst.tags.Role == "server"][0]
       }
       children = {
         k3s_server = {
@@ -77,6 +81,22 @@ output "ansible_inventory" {
       }
     }
   })
+}
+
+output "cluster_meta" {
+  description = "Cluster metadata for failover scripts and bootstrap"
+  value = {
+    provisioner        = "aws-ec2"
+    cluster_name       = "standby"
+    cluster_profile    = "standby"
+    ingress_host       = aws_lb.standby.dns_name
+    ingress_zone_id    = aws_lb.standby.zone_id
+    k3s_api_host       = [for inst in aws_instance.standby : inst.public_ip if inst.tags.Role == "server"][0]
+    velero_bucket      = aws_s3_bucket.backups.id
+    velero_access_key  = aws_iam_access_key.velero.id
+    velero_secret_key  = aws_iam_access_key.velero.secret
+  }
+  sensitive = true
 }
 
 output "vpc_id" {

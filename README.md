@@ -1,75 +1,64 @@
-# Hybrid Bare-Metal Kubernetes Platform (AWS)
+# Hybrid Bare-Metal Kubernetes Platform
 
-All-AWS, Terraform-managed k3s platform with dual Argo CD and fully automated failover.
+Portable k3s platform — swap EC2 for on-prem hardware without rewriting Ansible or GitOps.
 
 ## Architecture
 
 ```
-Route53 (app.yourdomain.com)
-  ├── PRIMARY: EC2 k3s cluster + Argo CD (active)
-  └── STANDBY: EC2 k3s cluster + Argo CD (pre-deployed, idle)
-
-Lambda Witness → Step Functions → Velero restore + Route53 failover
+Layer 4  shared-services/     Route53, Lambda witness (AWS)
+Layer 3  gitops/               Argo CD, apps
+Layer 2  ansible/              k3s bootstrap (same for all providers)
+Layer 1  provisioners/         aws-ec2 | libvirt | on-prem  ← swap here
 ```
 
-**EC2 instances = bare-metal emulation.** No QEMU needed on AWS.
+**Switch primary from EC2 to Raspberry Pi:** change one line in `config/clusters.yaml`, run bootstrap again. See [docs/PORTABLE-ARCHITECTURE.md](docs/PORTABLE-ARCHITECTURE.md).
 
-See [docs/AWS-ARCHITECTURE.md](docs/AWS-ARCHITECTURE.md) for the locked design.
+## Quick Start (AWS EC2)
+
+```bash
+cp config/clusters.example.yaml config/clusters.yaml
+cp primary-cluster/terraform.tfvars.example primary-cluster/terraform.tfvars
+# edit terraform.tfvars
+
+chmod +x scripts/*.sh
+./scripts/phase1-primary.sh
+./scripts/phase2-standby.sh
+```
+
+## Quick Start (On-Prem Primary)
+
+```bash
+# config/clusters.yaml
+primary:
+  provisioner: on-prem
+  inventory: ansible/inventory/on-prem.primary.yml
+  profile: primary
+
+cp provisioners/on-prem/inventory.primary.example.yml ansible/inventory/on-prem.primary.yml
+# edit IPs, run prepare-node.sh on each server
+
+./scripts/bootstrap-cluster.sh primary
+```
 
 ## Project Structure
 
 ```
-├── primary-cluster/       # Terraform: EC2 primary k3s nodes + NLB
-├── cloud-services/        # Terraform: EC2 standby nodes + S3 + NLB
-├── shared-services/       # Terraform: Route53, Lambda witness, Step Functions
-├── ansible/               # k3s bootstrap for both clusters
-├── gitops/                # Dual Argo CD configs + app manifests
-└── docs/
+config/clusters.yaml           ← switch provisioner per cluster
+provisioners/                  ← aws-ec2, libvirt, on-prem
+primary-cluster/               ← aws-ec2 primary Terraform
+cloud-services/                ← aws-ec2 standby + S3
+bare-metal-simulation/         ← libvirt local VMs
+ansible/                       ← provider-agnostic bootstrap
+gitops/                        ← provider-agnostic apps
+shared-services/               ← AWS failover layer
+scripts/provision.sh           ← Layer 1 entry point
+scripts/bootstrap-cluster.sh   ← Layer 2 entry point
 ```
-
-## Quick Start
-
-```bash
-# 1. Primary cluster
-cd primary-cluster
-terraform apply -var="ssh_public_key=$(cat ~/.ssh/id_ed25519.pub)" -var="admin_cidr=$(curl -s ifconfig.me)/32"
-terraform output -raw ansible_inventory > ../ansible/inventory/primary-hosts.yml
-
-# 2. Bootstrap primary k3s
-cd ../ansible && ansible-playbook -i inventory/primary-hosts.yml playbooks/site.yml
-
-# 3. Standby cluster
-cd ../cloud-services
-terraform apply -var="ssh_public_key=$(cat ~/.ssh/id_ed25519.pub)" -var="admin_cidr=$(curl -s ifconfig.me)/32"
-terraform output -raw ansible_inventory > ../ansible/inventory/standby-hosts.yml
-
-# 4. Bootstrap standby k3s + pre-deploy Argo CD on both clusters
-ansible-playbook -i inventory/standby-hosts.yml playbooks/site.yml
-
-# 5. Shared services (after registering a domain)
-cd ../shared-services
-terraform apply -var="domain_name=yourdomain.com" -var="alert_email=you@example.com"
-```
-
-## Key Design Decisions
-
-| Decision | Choice |
-|----------|--------|
-| Bare-metal emulation | EC2 instances (not QEMU on AWS) |
-| Argo CD | Pre-deployed on **both** primary and standby |
-| Failover | Fully automated (Lambda + Step Functions + Route53) |
-| Domain | Required for Phase 4 — register before DNS failover |
-
-## Estimated Cost
-
-| Config | ~$/month |
-|--------|----------|
-| Dev (1 CP + 2 workers + 2 standby) | ~$51 |
-| HA (3 CP + 2 workers + 2 standby) | ~$75 |
 
 ## Documentation
 
-- [Phase 1 Runbook — Primary cluster](docs/PHASE-1-RUNBOOK.md) ← **start here**
+- [Portable architecture — swap EC2 for on-prem](docs/PORTABLE-ARCHITECTURE.md)
+- [Phase 1 Runbook — Primary cluster](docs/PHASE-1-RUNBOOK.md)
 - [Phase 2 Runbook — Standby + backups](docs/PHASE-2-RUNBOOK.md)
-- [AWS Architecture (locked design)](docs/AWS-ARCHITECTURE.md)
-- [Full technical blueprint](docs/ARCHITECTURE.md)
+- [AWS Architecture](docs/AWS-ARCHITECTURE.md)
+- [On-prem provisioner](provisioners/on-prem/README.md)

@@ -2,6 +2,10 @@
 
 Deploy the primary EC2-based k3s cluster. Complete this before Phase 2 (standby).
 
+## Portable design
+
+This runbook uses the **aws-ec2** provisioner by default. To use on-prem or libvirt instead, change `config/clusters.yaml` — see [PORTABLE-ARCHITECTURE.md](PORTABLE-ARCHITECTURE.md).
+
 ## Prerequisites
 
 Install these on your **local machine** (the Terraform/Ansible control node):

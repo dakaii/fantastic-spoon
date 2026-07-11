@@ -26,10 +26,14 @@ output "ansible_inventory" {
   value = yamlencode({
     all = {
       vars = {
-        ansible_user                 = "ubuntu"
-        ansible_ssh_common_args      = "-o StrictHostKeyChecking=no"
-        k3s_version                  = "v1.29.5+k3s1"
-        k3s_token                    = "" # Set after first server bootstrap
+        ansible_user            = "ubuntu"
+        ansible_ssh_common_args = "-o StrictHostKeyChecking=no"
+        k3s_version             = "v1.29.5+k3s1"
+        cluster_name            = "primary"
+        cluster_profile           = "primary"
+        provisioner               = "libvirt"
+        ingress_host              = try(libvirt_domain.nodes[var.worker_count > 0 ? var.control_plane_count : 0].network_interface[0].addresses[0], "PENDING_BOOT")
+        k3s_api_host              = try(libvirt_domain.nodes[0].network_interface[0].addresses[0], "PENDING_BOOT")
       }
       children = {
         k3s_server = {
@@ -59,4 +63,15 @@ output "ansible_inventory" {
       }
     }
   })
+}
+
+output "cluster_meta" {
+  description = "Cluster metadata for bootstrap scripts"
+  value = {
+    provisioner     = "libvirt"
+    cluster_name    = "primary"
+    cluster_profile = "primary"
+    k3s_api_host    = try(libvirt_domain.nodes[0].network_interface[0].addresses[0], "PENDING_BOOT")
+    network_name    = libvirt_network.bare_metal.name
+  }
 }
