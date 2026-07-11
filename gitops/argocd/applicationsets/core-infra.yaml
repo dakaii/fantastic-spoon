@@ -1,0 +1,37 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: core-infra
+  namespace: argocd
+spec:
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            environment: primary
+        values:
+          clusterRole: primary
+    - clusters:
+        selector:
+          matchLabels:
+            environment: standby
+        values:
+          clusterRole: standby
+  template:
+    metadata:
+      name: "infra-{{values.clusterRole}}"
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/dakaii/fantastic-spoon.git
+        targetRevision: main
+        path: "gitops/infrastructure/{{values.clusterRole}}"
+      destination:
+        server: "{{server}}"
+        namespace: default
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true

@@ -1,0 +1,25 @@
+---
+- name: Bootstrap hybrid k8s platform nodes
+  hosts: all
+  become: true
+  roles:
+    - common
+
+- name: Install k3s control plane (HA)
+  hosts: k3s_server
+  become: true
+  serial: 1
+  roles:
+    - k3s-server
+
+- name: Join k3s worker agents
+  hosts: k3s_agent
+  become: true
+  roles:
+    - k3s-agent
+
+- name: Deploy cluster add-ons
+  hosts: k3s_server[0]
+  become: true
+  roles:
+    - k3s-addons

@@ -1,0 +1,55 @@
+#cloud-config
+hostname: ${hostname}
+manage_etc_hosts: true
+
+users:
+  - name: ubuntu
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - ${ssh_public_key}
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - curl
+  - jq
+  - open-iscsi
+  - nfs-common
+  - apt-transport-https
+  - ca-certificates
+
+write_files:
+  - path: /etc/rancher/k3s/config.yaml
+    content: |
+      node-label:
+        - "node-role=${node_role}"
+        - "node-index=${node_index}"
+      kubelet-arg:
+        - "eviction-hard=memory.available<200Mi"
+        - "eviction-soft=memory.available<500Mi"
+    permissions: "0644"
+
+  - path: /etc/modules-load.d/k8s.conf
+    content: |
+      overlay
+      br_netfilter
+    permissions: "0644"
+
+  - path: /etc/sysctl.d/99-kubernetes.conf
+    content: |
+      net.bridge.bridge-nf-call-iptables  = 1
+      net.bridge.bridge-nf-call-ip6tables = 1
+      net.ipv4.ip_forward                 = 1
+    permissions: "0644"
+
+runcmd:
+  - swapoff -a
+  - sed -i '/ swap / s/^/#/' /etc/fstab
+  - modprobe overlay
+  - modprobe br_netfilter
+  - sysctl --system
+  - systemctl enable --now iscsid
+
+final_message: "Cloud-init complete on ${hostname} (role: ${node_role})"

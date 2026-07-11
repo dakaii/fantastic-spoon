@@ -1,0 +1,22 @@
+# Register the cloud standby cluster with PRIMARY Argo CD.
+# Also install a separate Argo CD instance ON the standby cluster (see gitops/argocd/standby/).
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cluster-cloud-standby
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: cluster
+    environment: standby
+    role: passive
+type: Opaque
+stringData:
+  name: cloud-standby
+  server: https://CLOUD_STANDBY_API_IP:6443
+  config: |
+    {
+      "bearerToken": "REPLACE_WITH_ARGOCD_MANAGER_TOKEN",
+      "tlsClientConfig": {
+        "caData": "REPLACE_WITH_BASE64_CA_CERT"
+      }
+    }

@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cluster-local-primary
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: cluster
+    environment: primary
+    role: active
+type: Opaque
+stringData:
+  name: local-primary
+  server: https://kubernetes.default.svc
+  config: |
+    {
+      "tlsClientConfig": {
+        "insecure": false
+      }
+    }

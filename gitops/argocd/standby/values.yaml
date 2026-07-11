@@ -1,0 +1,24 @@
+# Argo CD on standby cluster — pre-deployed for automated failover.
+# Install with: helm install argocd argo/argo-cd -n argocd --create-namespace -f values.yaml
+#
+# Both primary and standby Argo CD instances watch the SAME Git repo.
+# Standby apps use replicas: 0 until failover activates them.
+
+server:
+  service:
+    type: NodePort
+  replicas: 1
+
+configs:
+  params:
+    server.insecure: true
+
+# Label this cluster's apps as passive by default
+extraObjects:
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: cluster-role
+      namespace: argocd
+    data:
+      role: passive

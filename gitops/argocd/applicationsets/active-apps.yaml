@@ -1,0 +1,42 @@
+# Deploys apps to whichever cluster has role=active.
+# On failover, witness patches cluster secret labels:
+#   primary: role=passive  |  standby: role=active
+# ApplicationSet automatically redeploys to the new active cluster.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: active-apps
+  namespace: argocd
+spec:
+  generators:
+    - merge:
+        mergeKeys:
+          - path
+        generators:
+          - clusters:
+              selector:
+                matchLabels:
+                  role: active
+          - git:
+              repoURL: https://github.com/dakaii/fantastic-spoon.git
+              revision: main
+              directories:
+                - path: gitops/apps/*
+  template:
+    metadata:
+      name: "{{path.basename}}"
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/dakaii/fantastic-spoon.git
+        targetRevision: main
+        path: "{{path}}"
+      destination:
+        server: "{{server}}"
+        namespace: "{{path.basename}}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
