@@ -1,0 +1,34 @@
+---
+- name: Install k3s server
+  ansible.builtin.shell: |
+    curl -sfL https://get.k3s.io | \
+      INSTALL_K3S_VERSION="{{ k3s_version }}" \
+      INSTALL_K3s_EXEC="server \
+        {% if groups['k3s_server'] | length > 1 %}--cluster-init{% endif %} \
+        --disable traefik \
+        --disable servicelb \
+        --write-kubeconfig-mode 644 \
+        --tls-san {{ ansible_host }}" \
+      sh -
+  args:
+    creates: /usr/local/bin/k3s
+
+- name: Wait for k3s to be ready
+  ansible.builtin.command: k3s kubectl get nodes
+  register: k3s_ready
+  retries: 30
+  delay: 10
+  until: k3s_ready.rc == 0
+  changed_when: false
+
+- name: Save k3s token for agents
+  ansible.builtin.slurp:
+    src: /var/lib/rancher/k3s/server/node-token
+  register: k3s_node_token
+  run_once: true
+  delegate_to: "{{ groups['k3s_server'][0] }}"
+
+- name: Set k3s token fact
+  ansible.builtin.set_fact:
+    k3s_token: "{{ k3s_node_token.content | b64decode | trim }}"
+  run_once: true

@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: developers
+  namespace: argocd
+spec:
+  description: Developer applications on the hybrid platform
+  sourceRepos:
+    - "https://github.com/dakaii/*"
+  destinations:
+    - namespace: "dev-*"
+      server: https://kubernetes.default.svc
+    - namespace: "dev-*"
+      server: "https://CLOUD_STANDBY_API_IP:6443"
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: apps
+      kind: Deployment
+    - group: ""
+      kind: Service
+    - group: ""
+      kind: ConfigMap
