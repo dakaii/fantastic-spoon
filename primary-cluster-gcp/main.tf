@@ -148,8 +148,9 @@ resource "google_compute_instance" "primary" {
   }
 }
 
-resource "google_compute_health_check" "primary" {
-  name = "${var.project_name}-primary-hc"
+resource "google_compute_region_health_check" "primary" {
+  name   = "${var.project_name}-primary-hc"
+  region = var.gcp_region
 
   tcp_health_check {
     port = 30443
@@ -180,7 +181,7 @@ resource "google_compute_region_backend_service" "primary" {
   region                = var.gcp_region
   load_balancing_scheme = "EXTERNAL"
   protocol              = "TCP"
-  health_checks         = [google_compute_health_check.primary.id]
+  health_checks         = [google_compute_region_health_check.primary.id]
 
   backend {
     group          = google_compute_instance_group.primary_workers.id

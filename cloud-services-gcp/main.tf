@@ -137,8 +137,9 @@ resource "google_compute_instance" "standby" {
   }
 }
 
-resource "google_compute_health_check" "standby" {
-  name = "${var.project_name}-standby-hc"
+resource "google_compute_region_health_check" "standby" {
+  name   = "${var.project_name}-standby-hc"
+  region = var.gcp_region
 
   tcp_health_check {
     port = 30443
@@ -169,7 +170,7 @@ resource "google_compute_region_backend_service" "standby" {
   region                = var.gcp_region
   load_balancing_scheme = "EXTERNAL"
   protocol              = "TCP"
-  health_checks         = [google_compute_health_check.standby.id]
+  health_checks         = [google_compute_region_health_check.standby.id]
 
   backend {
     group          = google_compute_instance_group.standby_workers.id
