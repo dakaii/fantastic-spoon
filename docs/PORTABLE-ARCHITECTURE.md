@@ -4,8 +4,8 @@ This project is structured in **layers**. Only the bottom layer (provisioning) c
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Layer 4: Failover        shared-services/ (AWS-only)       │
-│                           Route53, Lambda witness            │
+│  Layer 4: Failover        shared-services-gcp/ (GCP default) │
+│                           Cloud DNS, Cloud Function witness   │
 ├─────────────────────────────────────────────────────────────┤
 │  Layer 3: GitOps          gitops/                           │
 │                           Argo CD, apps, ApplicationSets     │
@@ -14,7 +14,7 @@ This project is structured in **layers**. Only the bottom layer (provisioning) c
 │                           k3s, Cilium, Traefik, Argo CD      │
 ├─────────────────────────────────────────────────────────────┤
 │  Layer 1: Provisioning    ← SWAP THIS LAYER                 │
-│                           aws-ec2 | libvirt | on-prem        │
+│                           gcp-compute | aws-ec2 | libvirt | on-prem │
 │                           Output: Ansible inventory + meta   │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -59,7 +59,8 @@ See [ansible/inventory/README.md](../ansible/inventory/README.md) for the full s
 
 | Provisioner | Use case | Terraform dir | On-prem ready? |
 |-------------|----------|---------------|----------------|
-| **aws-ec2** | All-in-AWS, cloud learning | `primary-cluster/`, `cloud-services/` | No (cloud VMs) |
+| **gcp-compute** | All-in-GCP (default) | `primary-cluster-gcp/`, `cloud-services-gcp/` | No (cloud VMs) |
+| **aws-ec2** | All-in-AWS | `primary-cluster/`, `cloud-services/` | No (cloud VMs) |
 | **libvirt** | Free local simulation (QEMU/KVM) | `bare-metal-simulation/` | Simulates on-prem |
 | **on-prem** | Real hardware (Pi, Mac Mini, rack servers) | None — manual inventory | Yes |
 

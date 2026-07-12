@@ -1,0 +1,37 @@
+# Failover workflow — mirrors AWS Step Functions placeholder steps
+main:
+  params: [input]
+  steps:
+    - notifyFailoverStart:
+        call: googleapis.pubsub.v1.projects.topics.publish
+        args:
+          topic: ${pubsub_topic}
+          body:
+            messages:
+              - data: $${base64.encode(json.encode({"subject": "Failover Workflow Started", "message": "Failover triggered. Reason: " + input.reason}))}
+        result: startNotify
+
+    - restoreVeleroBackup:
+        assign:
+          - restoreStatus: "velero_restore_pending"
+        next: activateStandbyArgoCD
+
+    - activateStandbyArgoCD:
+        assign:
+          - argocdStatus: "argocd_activation_pending"
+        next: notifyFailoverComplete
+
+    - notifyFailoverComplete:
+        call: googleapis.pubsub.v1.projects.topics.publish
+        args:
+          topic: ${pubsub_topic}
+          body:
+            messages:
+              - data: $${base64.encode(json.encode({"subject": "FAILOVER COMPLETE", "message": "Traffic should now route to standby cluster via Cloud DNS. Verify manually until Velero/Argo CD steps are automated."}))}
+        next: done
+
+    - done:
+        return:
+          status: complete
+          velero: $${restoreStatus}
+          argocd: $${argocdStatus}

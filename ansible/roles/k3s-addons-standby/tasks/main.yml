@@ -36,7 +36,7 @@
     values_files:
       - "{{ playbook_dir }}/../../gitops/argocd/standby/values.yaml"
 
-- name: Install Velero on standby
+- name: Install Velero on standby (AWS S3)
   kubernetes.core.helm:
     name: velero
     chart_ref: vmware-tanzu/velero
@@ -57,4 +57,33 @@
             [default]
             aws_access_key_id={{ velero_access_key }}
             aws_secret_access_key={{ velero_secret_key }}
-  when: velero_bucket is defined and velero_bucket != ""
+  when:
+    - velero_bucket is defined and velero_bucket != ""
+    - velero_provider | default('aws') == 'aws'
+
+- name: Install Velero on standby (GCS via S3-compatible API)
+  kubernetes.core.helm:
+    name: velero
+    chart_ref: vmware-tanzu/velero
+    release_namespace: velero
+    create_namespace: true
+    values:
+      configuration:
+        backupStorageLocation:
+          - name: default
+            provider: aws
+            bucket: "{{ velero_bucket }}"
+            config:
+              region: "{{ velero_region | default('auto') }}"
+              s3ForcePathStyle: "true"
+              s3Url: https://storage.googleapis.com
+      credentials:
+        useSecret: true
+        secretContents:
+          cloud: |
+            [default]
+            aws_access_key_id={{ velero_access_key }}
+            aws_secret_access_key={{ velero_secret_key }}
+  when:
+    - velero_bucket is defined and velero_bucket != ""
+    - velero_provider | default('aws') == 'gcp'

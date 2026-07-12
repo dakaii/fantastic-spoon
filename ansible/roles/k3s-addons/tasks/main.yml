@@ -67,7 +67,7 @@
       grafana:
         adminPassword: changeme
 
-- name: Install Velero
+- name: Install Velero (AWS S3)
   kubernetes.core.helm:
     name: velero
     chart_ref: vmware-tanzu/velero
@@ -88,3 +88,32 @@
             [default]
             aws_access_key_id={{ velero_access_key | default('CHANGE_ME') }}
             aws_secret_access_key={{ velero_secret_key | default('CHANGE_ME') }}
+  when: velero_provider | default('aws') == 'aws'
+
+- name: Install Velero (GCS via S3-compatible API)
+  kubernetes.core.helm:
+    name: velero
+    chart_ref: vmware-tanzu/velero
+    release_namespace: velero
+    create_namespace: true
+    values:
+      configuration:
+        backupStorageLocation:
+          - name: default
+            provider: aws
+            bucket: "{{ velero_bucket }}"
+            config:
+              region: "{{ velero_region | default('auto') }}"
+              s3ForcePathStyle: "true"
+              s3Url: https://storage.googleapis.com
+      credentials:
+        useSecret: true
+        secretContents:
+          cloud: |
+            [default]
+            aws_access_key_id={{ velero_access_key }}
+            aws_secret_access_key={{ velero_secret_key }}
+  when:
+    - velero_provider | default('aws') == 'gcp'
+    - velero_bucket is defined
+    - velero_bucket != ""

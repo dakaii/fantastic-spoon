@@ -1,0 +1,19 @@
+# Copy to terraform.tfvars:
+# cp terraform.tfvars.example terraform.tfvars
+
+gcp_project = "your-gcp-project-id"
+gcp_region  = "us-central1"
+
+project_name = "hybrid-k8s"
+
+# Leave empty until you register a domain (Phase 4)
+domain_name   = ""
+app_subdomain = "app"
+
+# Witness + Firestore (Phase 4). Set create_firestore_database=false if project already has one.
+enable_witness            = true
+create_firestore_database = true
+
+# Paths to cluster Terraform state (defaults work after primary + standby apply)
+# primary_state_path = "../primary-cluster-gcp/terraform.tfstate"
+# standby_state_path = "../cloud-services-gcp/terraform.tfstate"

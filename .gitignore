@@ -2,12 +2,15 @@
 .terraform/
 *.tfstate
 *.tfstate.*
+*.tfvars
+!*.tfvars.example
 config/clusters.yaml
 .terraform.lock.hcl
 crash.log
 
-# Lambda build artifacts
+# Lambda / Cloud Function build artifacts
 shared-services/lambda/*.zip
+shared-services-gcp/cloud_function/witness.zip
 
 # Ansible
 *.retry

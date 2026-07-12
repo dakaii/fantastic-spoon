@@ -4,7 +4,8 @@ Layer 1 of the platform. Each provisioner creates nodes and outputs a standard A
 
 | Provisioner | Directory | Best for |
 |-------------|-----------|----------|
-| [aws-ec2](aws-ec2/) | `primary-cluster/`, `cloud-services/` | All-cloud, learning AWS |
+| [gcp-compute](gcp-compute/) | `primary-cluster-gcp/`, `cloud-services-gcp/` | **Default** — all-cloud on GCP, multi-project accounts |
+| [aws-ec2](aws-ec2/) | `primary-cluster/`, `cloud-services/` | All-cloud on AWS |
 | [libvirt](libvirt/) | `bare-metal-simulation/` | Free local dev, simulates on-prem |
 | [on-prem](on-prem/) | Manual inventory | Raspberry Pi, Mac Mini, rack servers |
 

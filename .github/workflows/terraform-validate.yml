@@ -1,0 +1,40 @@
+name: Terraform Validate
+
+on:
+  pull_request:
+    paths:
+      - '**/*.tf'
+      - '**/*.tfvars.example'
+      - '.github/workflows/terraform-validate.yml'
+  push:
+    branches: [main]
+    paths:
+      - '**/*.tf'
+      - '**/*.tfvars.example'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        module:
+          - primary-cluster-gcp
+          - cloud-services-gcp
+          - shared-services-gcp
+          - primary-cluster
+          - cloud-services
+          - shared-services
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.5"
+
+      - name: Terraform init (${{ matrix.module }})
+        working-directory: ${{ matrix.module }}
+        run: terraform init -backend=false
+
+      - name: Terraform validate (${{ matrix.module }})
+        working-directory: ${{ matrix.module }}
+        run: terraform validate
