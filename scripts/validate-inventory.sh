@@ -39,5 +39,4 @@ if [[ $errors -gt 0 ]]; then
 fi
 
 echo "OK: $INVENTORY matches provider contract"
-mapfile -t hosts < <(inventory_ansible_hosts "$INVENTORY")
-echo "   ${#hosts[@]} node(s) defined"
+echo "   $(inventory_ansible_host_count "$INVENTORY") node(s) defined"
