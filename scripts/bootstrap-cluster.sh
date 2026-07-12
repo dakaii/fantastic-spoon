@@ -79,10 +79,19 @@ if [[ -f "$META_FILE" ]]; then
 fi
 
 echo "==> Running Ansible"
-ansible-playbook \
-  -i "$INVENTORY" \
-  "${REPO_ROOT}/ansible/playbooks/site.yml" \
-  "${EXTRA_VARS[@]}"
+ANSIBLE_DIR="${REPO_ROOT}/ansible"
+INVENTORY_FOR_ANSIBLE="${INVENTORY#"${ANSIBLE_DIR}/"}"
+if [[ "$INVENTORY_FOR_ANSIBLE" == "$INVENTORY" ]]; then
+  INVENTORY_FOR_ANSIBLE="$INVENTORY"
+fi
+
+(
+  cd "$ANSIBLE_DIR"
+  ansible-playbook \
+    -i "$INVENTORY_FOR_ANSIBLE" \
+    playbooks/site.yml \
+    "${EXTRA_VARS[@]}"
+)
 
 echo ""
 echo "==> Bootstrap complete: ${CLUSTER}"
