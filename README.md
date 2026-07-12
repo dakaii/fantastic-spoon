@@ -23,6 +23,10 @@ cp primary-cluster/terraform.tfvars.example primary-cluster/terraform.tfvars
 chmod +x scripts/*.sh
 ./scripts/phase1-primary.sh
 ./scripts/phase2-standby.sh
+
+# Deploy apps via Argo CD (after cluster bootstrap)
+kubectl apply -f gitops/argocd/applications/root-app.yaml
+# Linkding bookmarks app: gitops/apps/linkding/
 ```
 
 ## Quick Start (On-Prem Primary)
