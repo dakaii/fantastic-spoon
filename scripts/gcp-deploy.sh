@@ -18,6 +18,9 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=scripts/inventory-utils.sh
+source "${SCRIPT_DIR}/inventory-utils.sh"
 PRIMARY_TFVARS="${REPO_ROOT}/primary-cluster-gcp/terraform.tfvars"
 STANDBY_TFVARS="${REPO_ROOT}/cloud-services-gcp/terraform.tfvars"
 CONFIG="${REPO_ROOT}/config/clusters.yaml"
@@ -223,7 +226,7 @@ setup_kubeconfig() {
   [[ -f "$inventory" ]] || die "Missing ${inventory} — run infra first"
 
   local cp_ip
-  cp_ip="$(grep -A20 'k3s_server:' "$inventory" | grep ansible_host | head -1 | awk '{print $2}')"
+  cp_ip="$(inventory_first_control_plane_ip "$inventory")"
   [[ -n "$cp_ip" ]] || die "Could not read control plane IP from inventory"
 
   mkdir -p "$(dirname "$KUBECONFIG_PATH")"
@@ -265,7 +268,7 @@ cmd_apps() {
   }
 
   local cp_ip lb_ip
-  cp_ip="$(grep -A20 'k3s_server:' "${REPO_ROOT}/ansible/inventory/primary-hosts.yml" | grep ansible_host | head -1 | awk '{print $2}')"
+  cp_ip="$(inventory_first_control_plane_ip "${REPO_ROOT}/ansible/inventory/primary-hosts.yml")"
   lb_ip="$(terraform -chdir="${REPO_ROOT}/primary-cluster-gcp" output -raw primary_lb_ip 2>/dev/null || true)"
 
   echo ""
