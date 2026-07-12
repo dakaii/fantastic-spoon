@@ -1,0 +1,81 @@
+# Bootstrap k3s on existing GCE VMs — no local Terraform state required.
+#
+# Generates inventory from live GCE instances (gcloud), then runs Ansible.
+# See docs/GITHUB-ACTIONS-SETUP.md
+#
+# Secrets: GCP_PROJECT, GCP_SA_KEY, SSH_PRIVATE_KEY
+# Optional: SSH_PUBLIC_KEY, ADMIN_CIDR (for full infra workflow only)
+
+name: GCP Bootstrap
+
+on:
+  workflow_dispatch:
+    inputs:
+      cluster:
+        description: Cluster to bootstrap
+        required: true
+        default: primary
+        type: choice
+        options:
+          - primary
+          - standby
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    if: ${{ secrets.GCP_PROJECT != '' && secrets.GCP_SA_KEY != '' && secrets.SSH_PRIVATE_KEY != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Install Ansible, jq, and collections
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq jq
+          pip install ansible
+          ansible-galaxy collection install -r ansible/requirements.yml
+
+      - name: Configure SSH key for Ansible
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+      - name: Ensure clusters.yaml exists
+        run: cp config/clusters.example.yaml config/clusters.yaml
+
+      - name: Generate inventory from GCE
+        env:
+          GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
+        run: |
+          chmod +x scripts/*.sh
+          ./scripts/generate-gcp-inventory.sh "${{ inputs.cluster }}"
+          ./scripts/validate-inventory.sh "ansible/inventory/${{ inputs.cluster }}-hosts.yml"
+
+      - name: Bootstrap cluster (Ansible)
+        run: ./scripts/bootstrap-cluster.sh "${{ inputs.cluster }}"
+
+      - name: Upload inventory artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: "${{ inputs.cluster }}-inventory"
+          path: ansible/inventory/${{ inputs.cluster }}-hosts.yml
+
+  missing-secrets:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.GCP_PROJECT == '' || secrets.GCP_SA_KEY == '' || secrets.SSH_PRIVATE_KEY == '' }}
+    steps:
+      - name: Secrets not configured
+        run: |
+          echo "::warning::GCP bootstrap requires GCP_PROJECT, GCP_SA_KEY, and SSH_PRIVATE_KEY secrets."
+          echo "See docs/GITHUB-ACTIONS-SETUP.md"
+          exit 1
