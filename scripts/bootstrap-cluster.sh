@@ -4,6 +4,8 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=inventory-utils.sh
+source "${REPO_ROOT}/scripts/inventory-utils.sh"
 CONFIG="${REPO_ROOT}/config/clusters.yaml"
 CLUSTER="${1:?Usage: bootstrap-cluster.sh <primary|standby>}"
 
@@ -83,5 +85,7 @@ ansible-playbook \
 
 echo ""
 echo "==> Bootstrap complete: ${CLUSTER}"
-FIRST_CP=$(grep -A20 'k3s_server:' "$INVENTORY" | grep ansible_host | head -1 | awk '{print $2}')
+# shellcheck source=inventory-utils.sh
+source "${REPO_ROOT}/scripts/inventory-utils.sh"
+FIRST_CP="$(inventory_first_control_plane_ip "$INVENTORY")"
 echo "Verify: ssh ubuntu@${FIRST_CP} sudo k3s kubectl get nodes"

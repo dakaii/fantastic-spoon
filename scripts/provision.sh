@@ -49,6 +49,7 @@ case "$PROVISIONER" in
     if terraform output -json cluster_meta &>/dev/null; then
       terraform output -json cluster_meta > "${REPO_ROOT}/${INVENTORY_REL%.yml}.meta.json"
     fi
+    "${REPO_ROOT}/scripts/validate-inventory.sh" "${REPO_ROOT}/${INVENTORY_REL}"
     echo "Inventory written: ${INVENTORY_REL}"
     ;;
 
@@ -69,6 +70,7 @@ case "$PROVISIONER" in
     if terraform output -json cluster_meta &>/dev/null; then
       terraform output -json cluster_meta > "${REPO_ROOT}/${INVENTORY_REL%.yml}.meta.json"
     fi
+    "${REPO_ROOT}/scripts/validate-inventory.sh" "${REPO_ROOT}/${INVENTORY_REL}"
     echo "Inventory written: ${INVENTORY_REL}"
     ;;
 
@@ -88,6 +90,7 @@ case "$PROVISIONER" in
     if terraform output -json cluster_meta &>/dev/null; then
       terraform output -json cluster_meta > "${REPO_ROOT}/${INVENTORY_REL%.yml}.meta.json"
     fi
+    "${REPO_ROOT}/scripts/validate-inventory.sh" "${REPO_ROOT}/${INVENTORY_REL}"
     echo "Inventory written: ${INVENTORY_REL}"
     echo "Verify VM IPs: virsh domifaddr <node-name>"
     ;;

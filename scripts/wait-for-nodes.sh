@@ -2,6 +2,10 @@
 # wait-for-nodes.sh — Wait until EC2 nodes accept SSH connections
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=inventory-utils.sh
+source "${SCRIPT_DIR}/inventory-utils.sh"
+
 INVENTORY="${1:?Usage: wait-for-nodes.sh <inventory-file>}"
 TIMEOUT="${2:-300}"
 INTERVAL=10
@@ -11,7 +15,7 @@ if [[ ! -f "$INVENTORY" ]]; then
   exit 1
 fi
 
-mapfile -t HOSTS < <(grep 'ansible_host:' "$INVENTORY" | awk '{print $2}')
+mapfile -t HOSTS < <(inventory_ansible_hosts "$INVENTORY")
 
 if [[ ${#HOSTS[@]} -eq 0 ]]; then
   echo "No ansible_host entries found in $INVENTORY"
