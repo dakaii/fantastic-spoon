@@ -1,0 +1,6 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Standby cluster uses a lightweight stack (no full Prometheus/Grafana by default).
+# Add monitoring here when kube-prometheus-stack is installed on standby.
+resources: []
