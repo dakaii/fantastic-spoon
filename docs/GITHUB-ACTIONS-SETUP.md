@@ -130,3 +130,4 @@ Creating a GCP project requires **org/folder Project Creator** and **Billing Acc
 | Deploy tries to recreate VMs | Run `./scripts/gcp-tfstate-sync.sh push` from Mac first |
 | Destroy does nothing | Same — state must be in GCS bucket |
 | Ansible fails | Re-run **GCP Bootstrap** (idempotent) |
+| Argo CD `failed pre-install` timeout | Fixed in bootstrap: skips `redis-secret-init` hook, pre-creates Redis secret. If stuck, `helm uninstall argocd -n argocd` then re-run bootstrap (CRDs are kept) |
