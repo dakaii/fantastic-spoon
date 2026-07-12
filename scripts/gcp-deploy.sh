@@ -216,6 +216,7 @@ configure_velero_on_primary() {
     -e "velero_secret_key=${secret}" \
     -e "velero_provider=${vprovider}" \
     -e "velero_region=${vregion}"
+}
 
 setup_kubeconfig() {
   local inventory="${REPO_ROOT}/ansible/inventory/primary-hosts.yml"
@@ -237,8 +238,7 @@ setup_kubeconfig() {
 wait_for_argocd() {
   export KUBECONFIG="$KUBECONFIG_PATH"
   log "Waiting for Argo CD server..."
-  local i
-  for i in $(seq 1 60); do
+  for _ in $(seq 1 60); do
     if kubectl get pods -n argocd -l app.kubernetes.io/name=argocd-server --field-selector=status.phase=Running 2>/dev/null | grep -q Running; then
       return 0
     fi
