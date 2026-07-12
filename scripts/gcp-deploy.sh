@@ -96,7 +96,7 @@ write_tfvars() {
   local dir
   dir="$(dirname "$path")"
 
-  if [[ -f "$path" ]]; then
+  if [[ -f "$path" && "${FORCE_TFVARS:-}" != "1" ]]; then
     log "Already exists (not overwritten): ${path}"
     return
   fi
@@ -156,11 +156,7 @@ cmd_init() {
 
 enable_gcp_apis() {
   resolve_gcp_project
-  log "Enabling GCP APIs on project ${GCP_PROJECT} (one-time, may take a minute)"
-  gcloud services enable \
-    compute.googleapis.com \
-    storage.googleapis.com \
-    --project="$GCP_PROJECT"
+  "${REPO_ROOT}/scripts/gcp-enable-apis.sh"
 }
 
 cmd_infra() {

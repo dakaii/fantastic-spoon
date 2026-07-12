@@ -1,94 +1,66 @@
-# GitHub Actions setup (GCP bootstrap)
+# GitHub Actions setup (GCP)
 
-Run k3s bootstrap from GitHub’s cloud so you can close your laptop. Works on a **public repo** when secrets stay in GitHub Secrets (never commit keys).
+Run deploy and destroy from GitHub’s cloud so you can close your laptop. Works on a **public repo** when secrets stay in GitHub Secrets (never commit keys).
+
+**GCP project creation is not in GitHub Actions** — create the project once manually (Console or local script), then use Actions for deploy/destroy.
 
 ---
 
 ## Workflows
 
-| Workflow | Trigger | What it does |
-|----------|---------|--------------|
-| **GCP Bootstrap** (`gcp-bootstrap.yml`) | Manual | Inventory from live GCE → Ansible bootstrap (**use this now**) |
-| **GCP Deploy (Experimental)** (`gcp-deploy.yml`) | Manual | Full Terraform + bootstrap (needs shared Terraform state) |
-| **Terraform Validate** (`terraform-validate.yml`) | Every PR | `terraform validate` only — no secrets |
+| Workflow | When to use |
+|----------|-------------|
+| **GCP Bootstrap** | Ansible/k3s only — VMs already exist, need (re)bootstrap |
+| **GCP Deploy All** | Full stack: Terraform + bootstrap + Linkding apps |
+| **GCP Destroy** | Tear down all resources (`terraform destroy`) |
+| **Terraform Validate** | Automatic on PRs — no secrets |
 
 ---
 
-## One-time setup (~15 minutes)
+## Prerequisites (one time, on your Mac)
 
-### Quick setup (script)
+### 1. Create GCP project manually
 
-From your Mac (after `gcloud auth login`):
+[Google Cloud Console](https://console.cloud.google.com) → New project → link billing.
+
+Or locally (needs billing account ID):
 
 ```bash
-GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-setup-github-actions.sh --push-secrets
+GCP_PROJECT=hybrid-k8s-dev BILLING_ACCOUNT_ID=012345-678901-ABCDEF ./scripts/gcp-project-create.sh
 ```
 
-This creates the `github-actions` service account, downloads a JSON key to `.secrets/` (gitignored), and pushes GitHub secrets via `gh` CLI.
-
-For full Terraform deploy workflow later, add `--full`:
+### 2. GitHub secrets + service account
 
 ```bash
+gcloud auth login
+gh auth login
+
+# Bootstrap-only SA (Compute Viewer):
+GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-setup-github-actions.sh --push-secrets
+
+# Deploy + Destroy (Compute Admin, Storage Admin):
 GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-setup-github-actions.sh --full --push-secrets
 ```
 
-### Manual setup (alternative)
+| Secret | Required for |
+|--------|----------------|
+| `GCP_PROJECT` | All |
+| `GCP_SA_KEY` | All |
+| `SSH_PRIVATE_KEY` | Bootstrap, Deploy |
+| `SSH_PUBLIC_KEY` | Deploy, Destroy |
+| `ADMIN_CIDR` | Deploy (`0.0.0.0/0` for GitHub runners — set by script) |
 
-#### 1. Create a GCP service account
+### 3. Seed Terraform state (if you already deployed locally)
 
-In [GCP Console → IAM → Service Accounts](https://console.cloud.google.com/iam-admin/serviceaccounts) (project `hybrid-k8s-dev`):
-
-1. **Create service account** — name: `github-actions`
-2. **Grant roles:**
-   - Compute Viewer (read VMs + LB for inventory)
-   - Compute Admin (only if you use the full deploy workflow)
-   - Storage Admin (only for full deploy + Velero)
-3. **Keys → Add key → JSON** — download the file (keep it private)
-
-For **bootstrap-only**, `Compute Viewer` is enough. Use the broader roles if you plan to run the full deploy workflow later.
-
-### 2. SSH key pair (deploy-only)
-
-Use the **same key pair** already in your `terraform.tfvars` (`ssh_public_key`), or create a dedicated deploy key:
+So Deploy/Destroy know what exists:
 
 ```bash
-ssh-keygen -t ed25519 -f ~/.ssh/hybrid-k8s-deploy -N ""
-cat ~/.ssh/hybrid-k8s-deploy.pub    # → SSH_PUBLIC_KEY secret (optional)
-cat ~/.ssh/hybrid-k8s-deploy        # → SSH_PRIVATE_KEY secret
+GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-tfstate-sync.sh push
 ```
 
-If you create a new pair, update `ssh_public_key` in `primary-cluster-gcp/terraform.tfvars` and run `terraform apply` so VMs accept the new key.
+State is stored in `gs://YOUR_PROJECT-tfstate/`.
 
-### 3. Add GitHub repository secrets
-
-Repo → **Settings → Secrets and variables → Actions → New repository secret**
-
-| Secret | Value |
-|--------|--------|
-| `GCP_PROJECT` | `hybrid-k8s-dev` |
-| `GCP_SA_KEY` | Entire JSON key file contents |
-| `SSH_PRIVATE_KEY` | Private key (full PEM, including `-----BEGIN...`) |
-
-Optional (full deploy workflow only):
-
-| Secret | Value |
-|--------|--------|
-| `SSH_PUBLIC_KEY` | Public key line |
-| `ADMIN_CIDR` | CIDR that can SSH to VMs (see firewall below) |
-
-**CLI alternative** (from your Mac, with [gh](https://cli.github.com/) authenticated):
-
-```bash
-gh secret set GCP_PROJECT -b "hybrid-k8s-dev" -R dakaii/fantastic-spoon
-gh secret set GCP_SA_KEY    < path/to/sa-key.json -R dakaii/fantastic-spoon
-gh secret set SSH_PRIVATE_KEY < ~/.ssh/id_ed25519 -R dakaii/fantastic-spoon
-```
-
-### 4. Open SSH firewall to GitHub Actions
-
-VMs only allow SSH from `admin_cidr` in Terraform. GitHub-hosted runners use **different IPs** than your Mac.
-
-**Option A — Dev / learning (simplest):** allow SSH from anywhere temporarily.
+### 4. Open SSH firewall for GitHub runners
 
 Edit `primary-cluster-gcp/terraform.tfvars`:
 
@@ -96,74 +68,63 @@ Edit `primary-cluster-gcp/terraform.tfvars`:
 admin_cidr = "0.0.0.0/0"
 ```
 
-Then:
-
 ```bash
 cd primary-cluster-gcp && terraform apply
 ```
 
-Use a strong deploy-only SSH key. Tighten `admin_cidr` later.
-
-**Option B — Self-hosted runner on GCE (better):** run Actions on a small VM in your project; set `admin_cidr` to that VM’s IP only.
-
-**Option C — GitHub IP ranges:** [GitHub meta API](https://api.github.com/meta) lists `actions` CIDRs (large, changes). Possible but awkward for a solo project.
-
 ---
 
-## Run bootstrap (close laptop after this)
+## Run from GitHub or CLI
 
-1. Stop any local `./scripts/bootstrap-cluster.sh` run on your Mac (avoid two Ansible controllers).
-2. GitHub → **Actions** → **GCP Bootstrap** → **Run workflow**
-3. Cluster: `primary` → **Run workflow**
-4. Watch logs in the browser (~15–30 min for full Ansible + Helm add-ons).
-
-When it finishes, verify from your Mac:
+### Bootstrap only (your current situation)
 
 ```bash
-ssh ubuntu@136.112.126.15 "sudo k3s kubectl get nodes"
+gh workflow run gcp-bootstrap.yml -f cluster=primary -R dakaii/fantastic-spoon
+gh run watch -R dakaii/fantastic-spoon
 ```
+
+### Full deploy (greenfield or re-deploy)
+
+Actions → **GCP Deploy All** → Run workflow
+
+```bash
+gh workflow run gcp-deploy-all.yml -R dakaii/fantastic-spoon
+```
+
+### Destroy everything (stop billing)
+
+Actions → **GCP Destroy** → Run workflow
+
+Optional: check **delete_project** to remove the GCP project too.
+
+```bash
+gh workflow run gcp-destroy.yml -R dakaii/fantastic-spoon
+```
+
+Tip: add a [GitHub Environment](https://docs.github.com/en/actions/deployment/targeting-different-environments) with required reviewers on **GCP Destroy**.
 
 ---
 
-## Public repo safety checklist
+## Why no “create project” workflow?
 
-- Secrets only in **GitHub Secrets** — never in git or workflow YAML
-- Workflows use **`workflow_dispatch` only** (manual) — not triggered by untrusted PRs
-- Use a **dedicated** GCP service account + deploy SSH key (not your daily personal keys)
-- Prefer **bootstrap workflow** over storing JSON keys in more places than needed
-- For production: private repo, [Workload Identity Federation](https://cloud.google.com/iam/docs/workload-identity-federation-with-deployment-pipelines), narrow firewall rules
+Creating a GCP project requires **org/folder Project Creator** and **Billing Account User** permissions. A service account inside one project usually cannot create sibling projects. Create the project once manually, then automate deploy/destroy.
+
+---
+
+## Public repo safety
+
+- Secrets only in GitHub Secrets — never in git
+- Workflows are manual (`workflow_dispatch`) only
+- Use a dedicated deploy SSH key + service account
+- Consider Environment approval on **GCP Destroy**
 
 ---
 
 ## Troubleshooting
 
-**SSH timeout in workflow**
-
-- `admin_cidr` does not include GitHub runner IPs → apply Option A or B above
-- Wrong `SSH_PRIVATE_KEY` (doesn’t match VM `ssh_public_key`)
-
-**No instances found**
-
-- Wrong `GCP_PROJECT` secret
-- Service account missing `Compute Viewer`
-
-**Ansible fails mid-run**
-
-- Re-run **GCP Bootstrap** — Ansible is idempotent
-- Check VM logs: `ssh ubuntu@<ip> sudo journalctl -u k3s -f`
-
-**Full deploy workflow (`gcp-deploy.yml`)**
-
-- Requires Terraform state shared with CI (e.g. GCS backend). Bootstrap workflow does **not** need local tfstate.
-
----
-
-## After bootstrap
-
-Deploy apps (still local for now):
-
-```bash
-./scripts/gcp-deploy.sh apps
-```
-
-Or add an `apps` workflow later.
+| Problem | Fix |
+|---------|-----|
+| SSH timeout | `admin_cidr = "0.0.0.0/0"` + `terraform apply` |
+| Deploy tries to recreate VMs | Run `./scripts/gcp-tfstate-sync.sh push` from Mac first |
+| Destroy does nothing | Same — state must be in GCS bucket |
+| Ansible fails | Re-run **GCP Bootstrap** (idempotent) |

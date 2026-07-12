@@ -1,43 +1,39 @@
-# Manual GCP deploy — EXPERIMENTAL (see docs/GCP-DEPLOY.md, docs/GITHUB-ACTIONS-SETUP.md)
-#
-# Limitations:
-#   - Requires GCP service account JSON in GitHub secrets
-#   - Requires SSH_PRIVATE_KEY secret matching terraform.tfvars ssh_public_key
-#   - VMs must allow SSH from GitHub Actions IP ranges OR use a self-hosted runner
-#   - Recommended: use ./scripts/gcp-deploy.sh locally instead
-#
-# Secrets required:
-#   GCP_PROJECT, GCP_SA_KEY, SSH_PUBLIC_KEY, SSH_PRIVATE_KEY, ADMIN_CIDR
+# Full deploy: Terraform + Ansible bootstrap + Linkding apps
+# Requires an existing GCP project (create manually or ./scripts/gcp-project-create.sh locally)
+# See docs/GITHUB-ACTIONS-SETUP.md
 
-name: GCP Deploy (Experimental)
+name: GCP Deploy All
 
 on:
   workflow_dispatch:
     inputs:
-      step:
-        description: 'Deploy step'
-        required: true
-        default: 'infra'
-        type: choice
-        options:
-          - infra
+      skip_apps:
+        description: Skip Linkding/Argo CD app deploy
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     steps:
       - name: Check required secrets
         env:
           GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
           GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
+          ADMIN_CIDR: ${{ secrets.ADMIN_CIDR }}
         run: |
           missing=0
           [[ -n "$GCP_PROJECT" ]] || { echo "::error::Missing secret GCP_PROJECT"; missing=1; }
           [[ -n "$GCP_SA_KEY" ]] || { echo "::error::Missing secret GCP_SA_KEY"; missing=1; }
           [[ -n "$SSH_PRIVATE_KEY" ]] || { echo "::error::Missing secret SSH_PRIVATE_KEY"; missing=1; }
+          [[ -n "$SSH_PUBLIC_KEY" ]] || { echo "::error::Missing secret SSH_PUBLIC_KEY"; missing=1; }
+          [[ -n "$ADMIN_CIDR" ]] || { echo "::error::Missing secret ADMIN_CIDR (use 0.0.0.0/0 for GitHub runners)"; missing=1; }
           if [[ $missing -ne 0 ]]; then
-            echo "Use ./scripts/gcp-deploy.sh locally — see docs/GCP-DEPLOY.md"
+            echo "See docs/GITHUB-ACTIONS-SETUP.md"
             exit 1
           fi
 
@@ -53,34 +49,30 @@ jobs:
         with:
           terraform_version: "~> 1.5"
 
-      - name: Install Ansible and tools
+      - name: Install Ansible, jq, kubectl, and collections
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq jq
           pip install ansible
           ansible-galaxy collection install -r ansible/requirements.yml
+          curl -fsSL -o kubectl "https://dl.k8s.io/release/$(curl -fsL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
 
       - name: Configure SSH key for Ansible
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
           mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
 
-      - name: Create local terraform.tfvars
+      - name: Deploy all (Terraform + Ansible + apps)
         env:
           GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
           SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
           ADMIN_CIDR: ${{ secrets.ADMIN_CIDR }}
-        run: |
-          chmod +x scripts/gcp-deploy.sh
-          SKIP_AUTH=1 ./scripts/gcp-deploy.sh init
-
-      - name: Deploy infrastructure
-        if: inputs.step == 'infra'
-        env:
-          SKIP_AUTH: 1
+          SKIP_APPS: ${{ inputs.skip_apps == true && '1' || '' }}
         run: |
           chmod +x scripts/*.sh
-          ./scripts/gcp-deploy.sh infra
+          ./scripts/gcp-deploy-ci.sh

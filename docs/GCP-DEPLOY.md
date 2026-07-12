@@ -81,10 +81,13 @@ Best for: validating Terraform on every PR, team workflows, repeatable deploys a
 This repo includes:
 
 - **`terraform-validate.yml`** — runs on every PR (no GCP secrets needed)
-- **`gcp-bootstrap.yml`** — manual bootstrap on existing GCE VMs (**recommended for GHA**)
-- **`gcp-deploy.yml`** — manual full Terraform deploy; requires shared remote state
+- **`gcp-bootstrap.yml`** — manual bootstrap on existing GCE VMs
+- **`gcp-deploy-all.yml`** — manual full deploy (Terraform + Ansible + apps)
+- **`gcp-destroy.yml`** — manual teardown (`terraform destroy`)
 
 See **[GITHUB-ACTIONS-SETUP.md](GITHUB-ACTIONS-SETUP.md)** for step-by-step secret setup.
+
+**Note:** GCP project creation is manual (Console). GitHub Actions handles deploy and destroy only.
 
 ### Setting up GitHub Actions bootstrap (recommended)
 

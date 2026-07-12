@@ -157,7 +157,10 @@ if [[ "$PUSH_SECRETS" -eq 1 ]]; then
     gh secret set SSH_PUBLIC_KEY < "${SSH_KEY}.pub" -R "$GITHUB_REPO"
   fi
 
-  log "GitHub secrets updated: GCP_PROJECT, GCP_SA_KEY, SSH_PRIVATE_KEY"
+  ADMIN_CIDR="${ADMIN_CIDR:-0.0.0.0/0}"
+  gh secret set ADMIN_CIDR -b "$ADMIN_CIDR" -R "$GITHUB_REPO"
+
+  log "GitHub secrets updated: GCP_PROJECT, GCP_SA_KEY, SSH_PRIVATE_KEY, ADMIN_CIDR"
 else
   echo "Push secrets manually (or re-run with --push-secrets):"
   echo ""
