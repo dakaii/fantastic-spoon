@@ -208,17 +208,20 @@ configure_velero_on_primary() {
   fi
 
   log "Configuring Velero on primary (bucket: ${bucket})"
-  ansible-playbook \
-    -i "$inventory" \
-    "${REPO_ROOT}/ansible/playbooks/site.yml" \
-    -e cluster_profile=primary \
-    -e cluster_name=primary \
-    -e provisioner=gcp-compute \
-    -e "velero_bucket=${bucket}" \
-    -e "velero_access_key=${key}" \
-    -e "velero_secret_key=${secret}" \
-    -e "velero_provider=${vprovider}" \
-    -e "velero_region=${vregion}"
+  (
+    cd "${REPO_ROOT}/ansible"
+    ansible-playbook \
+      -i "inventory/primary-hosts.yml" \
+      playbooks/site.yml \
+      -e cluster_profile=primary \
+      -e cluster_name=primary \
+      -e provisioner=gcp-compute \
+      -e "velero_bucket=${bucket}" \
+      -e "velero_access_key=${key}" \
+      -e "velero_secret_key=${secret}" \
+      -e "velero_provider=${vprovider}" \
+      -e "velero_region=${vregion}"
+  )
 }
 
 setup_kubeconfig() {
