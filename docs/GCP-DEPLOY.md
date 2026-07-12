@@ -90,8 +90,11 @@ This repo includes:
    - `GCP_PROJECT`
    - `GCP_SA_KEY` (JSON key — or prefer [Workload Identity Federation](https://cloud.google.com/iam/docs/workload-identity-federation-with-deployment-pipelines) for production)
    - `SSH_PUBLIC_KEY`
-   - `ADMIN_CIDR`
-3. Run workflow manually from Actions tab → **GCP Deploy** → Run workflow
+   - `SSH_PRIVATE_KEY` (matching pair — required for Ansible over SSH)
+   - `ADMIN_CIDR` (must allow GitHub Actions runner IPs, or use a self-hosted runner)
+3. Run workflow manually from Actions tab → **GCP Deploy (Experimental)** → Run workflow
+
+**Note:** The GHA workflow only supports `infra` (not `apps`). Run `./scripts/gcp-deploy.sh apps` locally after infra succeeds.
 
 **Recommendation:** Use local `./scripts/gcp-deploy.sh` until the cluster works, then add GHA for `terraform validate` on PRs. Add full GHA deploy only if you want push-button redeploys without your laptop.
 

@@ -18,6 +18,7 @@ GCP is the **default cloud provider** for this repo. AWS modules remain availabl
 | Failover | **Fully automated** | Cloud Function witness + Cloud DNS + Velero + standby Argo CD |
 | DNS | **Cloud DNS** (requires a domain) | Native GCP integration with health-checked failover routing |
 | Backups | **Velero → GCS** | Cross-cluster restore on failover (HMAC keys, S3-compatible API) |
+| Terraform provider | **google ~> 6.0** | Required for Cloud DNS `external_endpoints` failover routing |
 
 ---
 

@@ -178,8 +178,44 @@ cmd_infra() {
   log "Phase 2 — standby cluster + GCS backups"
   "${REPO_ROOT}/scripts/phase2-standby.sh"
 
+  configure_velero_on_primary
+
   log "Infrastructure deploy complete"
 }
+
+configure_velero_on_primary() {
+  local meta="${REPO_ROOT}/ansible/inventory/standby-hosts.meta.json"
+  local inventory="${REPO_ROOT}/ansible/inventory/primary-hosts.yml"
+
+  if [[ ! -f "$meta" ]]; then
+    log "No standby meta file — skipping Velero config on primary"
+    return
+  fi
+
+  local bucket key secret vprovider vregion
+  bucket=$(jq -r '.velero_bucket // empty' "$meta")
+  key=$(jq -r '.velero_access_key // empty' "$meta")
+  secret=$(jq -r '.velero_secret_key // empty' "$meta")
+  vprovider=$(jq -r '.velero_provider // "gcp"' "$meta")
+  vregion=$(jq -r '.velero_region // "auto"' "$meta")
+
+  if [[ -z "$bucket" || -z "$key" || -z "$secret" ]]; then
+    log "Velero credentials missing in meta — skipping primary Velero config"
+    return
+  fi
+
+  log "Configuring Velero on primary (bucket: ${bucket})"
+  ansible-playbook \
+    -i "$inventory" \
+    "${REPO_ROOT}/ansible/playbooks/site.yml" \
+    -e cluster_profile=primary \
+    -e cluster_name=primary \
+    -e provisioner=gcp-compute \
+    -e "velero_bucket=${bucket}" \
+    -e "velero_access_key=${key}" \
+    -e "velero_secret_key=${secret}" \
+    -e "velero_provider=${vprovider}" \
+    -e "velero_region=${vregion}"
 
 setup_kubeconfig() {
   local inventory="${REPO_ROOT}/ansible/inventory/primary-hosts.yml"

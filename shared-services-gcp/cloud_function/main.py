@@ -2,25 +2,29 @@
 
 import json
 import os
+import ssl
 import urllib.error
 import urllib.request
 
 import functions_framework
 from google.cloud import firestore
+from google.cloud import pubsub_v1
 from google.cloud.workflows.executions_v1 import ExecutionsClient
 from google.cloud.workflows.executions_v1.types import Execution
-from google.cloud import pubsub_v1
 
 PRIMARY_API_URL = os.environ["PRIMARY_API_URL"]
 FAILURE_THRESHOLD = int(os.environ.get("FAILURE_THRESHOLD", "3"))
 FAILOVER_WORKFLOW_ID = os.environ["FAILOVER_WORKFLOW_ID"]
 PUBSUB_TOPIC = os.environ["PUBSUB_TOPIC"]
-GCP_PROJECT = os.environ["GCP_PROJECT"]
-GCP_REGION = os.environ.get("GCP_REGION", "us-central1")
 
 db = firestore.Client()
 executions_client = ExecutionsClient()
 publisher = pubsub_v1.PublisherClient()
+
+# k3s serves /readyz with a self-signed cert — skip verification for health checks
+SSL_CTX = ssl.create_default_context()
+SSL_CTX.check_hostname = False
+SSL_CTX.verify_mode = ssl.CERT_NONE
 
 
 def get_state():
@@ -40,7 +44,7 @@ def check_health():
     url = f"{PRIMARY_API_URL}/readyz"
     req = urllib.request.Request(url, method="GET")
     try:
-        with urllib.request.urlopen(req, timeout=5) as resp:
+        with urllib.request.urlopen(req, timeout=5, context=SSL_CTX) as resp:
             return resp.status == 200
     except (urllib.error.URLError, TimeoutError):
         return False
@@ -52,11 +56,12 @@ def publish_alert(subject, message):
 
 
 def trigger_failover(failures):
-    parent = FAILOVER_WORKFLOW_ID
     execution = Execution(
         argument=json.dumps({"reason": "primary_unhealthy", "failures": failures})
     )
-    return executions_client.create_execution(parent=parent, execution=execution)
+    return executions_client.create_execution(
+        parent=FAILOVER_WORKFLOW_ID, execution=execution
+    )
 
 
 @functions_framework.http

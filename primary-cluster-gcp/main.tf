@@ -4,7 +4,7 @@ terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "~> 5.0"
+      version = "~> 6.0"
     }
   }
 }
@@ -103,7 +103,8 @@ locals {
     for i in range(var.worker_count) : {
       name = "${var.project_name}-worker-${i + 1}"
       role = "agent"
-      zone = var.gcp_zones[i % length(var.gcp_zones)]
+      # Workers must share a zone — zonal instance group for the TCP load balancer
+      zone = var.gcp_zones[0]
     }
   ]
 

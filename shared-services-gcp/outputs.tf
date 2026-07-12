@@ -10,17 +10,17 @@ output "dns_name_servers" {
 
 output "witness_function_name" {
   description = "Cloud Function witness name"
-  value       = google_cloudfunctions2_function.witness.name
+  value       = var.enable_witness ? google_cloudfunctions2_function.witness[0].name : null
 }
 
 output "failover_workflow_id" {
   description = "Cloud Workflows failover workflow ID"
-  value       = google_workflows_workflow.failover.id
+  value       = var.enable_witness ? google_workflows_workflow.failover[0].id : null
 }
 
 output "pubsub_topic_id" {
   description = "Pub/Sub topic for failover alerts"
-  value       = google_pubsub_topic.failover.id
+  value       = var.enable_witness ? google_pubsub_topic.failover[0].id : null
 }
 
 output "app_dns_name" {

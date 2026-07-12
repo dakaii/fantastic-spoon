@@ -10,7 +10,7 @@ variable "gcp_region" {
 }
 
 variable "gcp_zones" {
-  description = "GCP zones for node placement"
+  description = "GCP zones for node placement (control planes spread across zones; workers use zones[0] for LB)"
   type        = list(string)
   default     = ["us-central1-a", "us-central1-b"]
 }

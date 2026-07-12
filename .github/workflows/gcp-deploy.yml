@@ -1,14 +1,15 @@
-# Manual GCP deploy — requires GitHub secrets (see docs/GCP-DEPLOY.md)
+# Manual GCP deploy — EXPERIMENTAL (see docs/GCP-DEPLOY.md)
+#
+# Limitations:
+#   - Requires GCP service account JSON in GitHub secrets
+#   - Requires SSH_PRIVATE_KEY secret matching terraform.tfvars ssh_public_key
+#   - VMs must allow SSH from GitHub Actions IP ranges OR use a self-hosted runner
+#   - Recommended: use ./scripts/gcp-deploy.sh locally instead
 #
 # Secrets required:
-#   GCP_PROJECT      — e.g. hybrid-k8s-dev
-#   GCP_SA_KEY       — service account JSON (prefer Workload Identity for production)
-#   SSH_PUBLIC_KEY   — contents of id_ed25519.pub
-#   ADMIN_CIDR       — your IP/32
-#
-# Recommended: use ./scripts/gcp-deploy.sh locally instead until infra is stable.
+#   GCP_PROJECT, GCP_SA_KEY, SSH_PUBLIC_KEY, SSH_PRIVATE_KEY, ADMIN_CIDR
 
-name: GCP Deploy
+name: GCP Deploy (Experimental)
 
 on:
   workflow_dispatch:
@@ -20,12 +21,11 @@ on:
         type: choice
         options:
           - infra
-          - apps
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: ${{ secrets.GCP_PROJECT != '' && secrets.GCP_SA_KEY != '' }}
+    if: ${{ secrets.GCP_PROJECT != '' && secrets.GCP_SA_KEY != '' && secrets.SSH_PRIVATE_KEY != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -39,8 +39,16 @@ jobs:
         with:
           terraform_version: "~> 1.5"
 
-      - name: Install Ansible
+      - name: Install Ansible and tools
         run: pip install ansible
+
+      - name: Configure SSH key for Ansible
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
 
       - name: Create local terraform.tfvars
         env:
@@ -59,20 +67,12 @@ jobs:
           chmod +x scripts/*.sh
           ./scripts/gcp-deploy.sh infra
 
-      - name: Deploy apps
-        if: inputs.step == 'apps'
-        env:
-          SKIP_AUTH: 1
-        run: |
-          chmod +x scripts/*.sh
-          ./scripts/gcp-deploy.sh apps
-
   missing-secrets:
     runs-on: ubuntu-latest
-    if: ${{ secrets.GCP_PROJECT == '' || secrets.GCP_SA_KEY == '' }}
+    if: ${{ secrets.GCP_PROJECT == '' || secrets.GCP_SA_KEY == '' || secrets.SSH_PRIVATE_KEY == '' }}
     steps:
       - name: Secrets not configured
         run: |
-          echo "::warning::GCP deploy secrets not set. Use ./scripts/gcp-deploy.sh locally."
-          echo "See docs/GCP-DEPLOY.md for setup instructions."
+          echo "::warning::GCP deploy requires GCP_PROJECT, GCP_SA_KEY, and SSH_PRIVATE_KEY secrets."
+          echo "Use ./scripts/gcp-deploy.sh locally — see docs/GCP-DEPLOY.md"
           exit 1

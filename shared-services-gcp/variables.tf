@@ -55,3 +55,15 @@ variable "standby_lb_ip" {
   type        = string
   default     = ""
 }
+
+variable "enable_witness" {
+  description = "Deploy Cloud Function witness + Cloud Workflows (Phase 4)"
+  type        = bool
+  default     = true
+}
+
+variable "create_firestore_database" {
+  description = "Create Firestore (default) DB for witness state. Set false if project already has one."
+  type        = bool
+  default     = true
+}

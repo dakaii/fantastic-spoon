@@ -4,7 +4,7 @@ terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "~> 5.0"
+      version = "~> 6.0"
     }
   }
 }
@@ -95,7 +95,8 @@ locals {
     for i in range(var.standby_node_count) : {
       name = "${var.project_name}-standby-${i + 1}"
       role = i == 0 ? "server" : "agent"
-      zone = var.gcp_zones[i % length(var.gcp_zones)]
+      # Standby workers share zone 0 for zonal instance group + TCP LB
+      zone = var.gcp_zones[0]
     }
   ]
 }

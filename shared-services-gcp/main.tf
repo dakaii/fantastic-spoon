@@ -4,7 +4,7 @@ terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "~> 5.0"
+      version = "~> 6.0"
     }
     archive = {
       source  = "hashicorp/archive"
@@ -53,17 +53,16 @@ resource "google_dns_managed_zone" "main" {
   description = "Hybrid k8s failover zone"
 }
 
-resource "google_dns_health_check" "primary" {
+resource "google_compute_health_check" "primary_ingress" {
   count = var.domain_name != "" ? 1 : 0
 
-  name               = "${var.project_name}-primary-hc"
+  name               = "${var.project_name}-primary-ingress-hc"
   check_interval_sec = 30
   timeout_sec        = 5
 
   https_health_check {
     port         = 443
     request_path = "/"
-    host         = local.primary_lb_ip
   }
 }
 
@@ -76,21 +75,18 @@ resource "google_dns_record_set" "app_failover" {
   ttl          = 30
 
   routing_policy {
+    health_check = google_compute_health_check.primary_ingress[0].id
+
     primary_backup {
       enable_geo_fencing_for_backups = false
 
       primary {
-        rrdatas = [local.primary_lb_ip]
-
-        health_checked_targets {
-          targets {
-            ip_address = local.primary_lb_ip
-          }
-        }
+        external_endpoints = [local.primary_lb_ip]
       }
 
-      backup {
-        rrdatas = [local.standby_lb_ip]
+      backup_geo {
+        location = var.gcp_region
+        rrdatas  = [local.standby_lb_ip]
       }
     }
   }
@@ -99,6 +95,8 @@ resource "google_dns_record_set" "app_failover" {
 # --- Witness state (Firestore) ---
 
 resource "google_firestore_database" "witness" {
+  count = var.enable_witness && var.create_firestore_database ? 1 : 0
+
   project     = var.gcp_project
   name        = "(default)"
   location_id = var.gcp_region
@@ -108,41 +106,55 @@ resource "google_firestore_database" "witness" {
 # --- Pub/Sub alerts ---
 
 resource "google_pubsub_topic" "failover" {
+  count = var.enable_witness ? 1 : 0
+
   name = "${var.project_name}-failover-alerts"
 }
 
 # --- Cloud Function witness ---
 
 resource "google_service_account" "witness" {
+  count = var.enable_witness ? 1 : 0
+
   account_id   = "${var.project_name}-witness"
   display_name = "Failover witness Cloud Function"
 }
 
 resource "google_project_iam_member" "witness_firestore" {
+  count = var.enable_witness ? 1 : 0
+
   project = var.gcp_project
   role    = "roles/datastore.user"
-  member  = "serviceAccount:${google_service_account.witness.email}"
+  member  = "serviceAccount:${google_service_account.witness[0].email}"
 }
 
 resource "google_project_iam_member" "witness_pubsub" {
+  count = var.enable_witness ? 1 : 0
+
   project = var.gcp_project
   role    = "roles/pubsub.publisher"
-  member  = "serviceAccount:${google_service_account.witness.email}"
+  member  = "serviceAccount:${google_service_account.witness[0].email}"
 }
 
 resource "google_project_iam_member" "witness_workflows" {
+  count = var.enable_witness ? 1 : 0
+
   project = var.gcp_project
   role    = "roles/workflows.invoker"
-  member  = "serviceAccount:${google_service_account.witness.email}"
+  member  = "serviceAccount:${google_service_account.witness[0].email}"
 }
 
 data "archive_file" "witness" {
+  count = var.enable_witness ? 1 : 0
+
   type        = "zip"
   source_dir  = "${path.module}/cloud_function"
   output_path = "${path.module}/cloud_function/witness.zip"
 }
 
 resource "google_storage_bucket" "witness_source" {
+  count = var.enable_witness ? 1 : 0
+
   name     = "${var.project_name}-witness-src-${var.gcp_project}"
   location = var.gcp_region
 
@@ -159,12 +171,16 @@ resource "google_storage_bucket" "witness_source" {
 }
 
 resource "google_storage_bucket_object" "witness" {
-  name   = "witness-${data.archive_file.witness.output_md5}.zip"
-  bucket = google_storage_bucket.witness_source.name
-  source = data.archive_file.witness.output_path
+  count = var.enable_witness ? 1 : 0
+
+  name   = "witness-${data.archive_file.witness[0].output_md5}.zip"
+  bucket = google_storage_bucket.witness_source[0].name
+  source = data.archive_file.witness[0].output_path
 }
 
 resource "google_cloudfunctions2_function" "witness" {
+  count = var.enable_witness ? 1 : 0
+
   name        = "${var.project_name}-witness"
   location    = var.gcp_region
   description = "Checks primary k3s API health and triggers failover workflow"
@@ -174,37 +190,41 @@ resource "google_cloudfunctions2_function" "witness" {
     entry_point = "health_check"
     source {
       storage_source {
-        bucket = google_storage_bucket.witness_source.name
-        object = google_storage_bucket_object.witness.name
+        bucket = google_storage_bucket.witness_source[0].name
+        object = google_storage_bucket_object.witness[0].name
       }
     }
   }
 
   service_config {
-    available_memory   = "256M"
-    timeout_seconds    = 30
-    service_account_email = google_service_account.witness.email
+    available_memory      = "256M"
+    timeout_seconds       = 30
+    service_account_email = google_service_account.witness[0].email
 
     environment_variables = {
-      PRIMARY_API_URL       = local.primary_api_url
-      FAILURE_THRESHOLD     = "3"
-      FIRESTORE_DATABASE    = google_firestore_database.witness.name
-      FAILOVER_WORKFLOW_ID  = google_workflows_workflow.failover.id
-      PUBSUB_TOPIC          = google_pubsub_topic.failover.id
-      GCP_PROJECT           = var.gcp_project
+      PRIMARY_API_URL      = local.primary_api_url
+      FAILURE_THRESHOLD    = "3"
+      FAILOVER_WORKFLOW_ID = google_workflows_workflow.failover[0].id
+      PUBSUB_TOPIC         = google_pubsub_topic.failover[0].id
+      GCP_PROJECT          = var.gcp_project
+      GCP_REGION           = var.gcp_region
     }
   }
 }
 
 resource "google_cloudfunctions2_function_iam_member" "witness_invoker" {
-  project        = google_cloudfunctions2_function.witness.project
-  location       = google_cloudfunctions2_function.witness.location
-  cloud_function = google_cloudfunctions2_function.witness.name
+  count = var.enable_witness ? 1 : 0
+
+  project        = google_cloudfunctions2_function.witness[0].project
+  location       = google_cloudfunctions2_function.witness[0].location
+  cloud_function = google_cloudfunctions2_function.witness[0].name
   role           = "roles/cloudfunctions.invoker"
-  member         = "serviceAccount:${google_service_account.witness.email}"
+  member         = "serviceAccount:${google_service_account.witness[0].email}"
 }
 
 resource "google_cloud_scheduler_job" "witness" {
+  count = var.enable_witness ? 1 : 0
+
   name             = "${var.project_name}-witness-schedule"
   schedule         = "*/1 * * * *"
   attempt_deadline = "60s"
@@ -212,10 +232,10 @@ resource "google_cloud_scheduler_job" "witness" {
 
   http_target {
     http_method = "POST"
-    uri         = google_cloudfunctions2_function.witness.service_config[0].uri
+    uri         = google_cloudfunctions2_function.witness[0].service_config[0].uri
 
     oidc_token {
-      service_account_email = google_service_account.witness.email
+      service_account_email = google_service_account.witness[0].email
     }
   }
 }
@@ -223,12 +243,14 @@ resource "google_cloud_scheduler_job" "witness" {
 # --- Cloud Workflows failover ---
 
 resource "google_workflows_workflow" "failover" {
+  count = var.enable_witness ? 1 : 0
+
   name            = "${var.project_name}-failover"
   region          = var.gcp_region
   description     = "Automated failover workflow for hybrid k8s platform"
-  service_account = google_service_account.witness.id
+  service_account = google_service_account.witness[0].id
 
   source_contents = templatefile("${path.module}/workflows/failover.yaml", {
-    pubsub_topic = google_pubsub_topic.failover.id
+    pubsub_topic = google_pubsub_topic.failover[0].id
   })
 }
