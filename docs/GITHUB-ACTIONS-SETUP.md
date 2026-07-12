@@ -78,9 +78,11 @@ cd primary-cluster-gcp && terraform apply
 
 ### Bootstrap only (your current situation)
 
+**Run one workflow at a time.** Two concurrent bootstrap runs will fight over Helm and leave releases stuck (`another operation is in progress`).
+
 ```bash
 gh workflow run gcp-bootstrap.yml -f cluster=primary -R dakaii/fantastic-spoon
-gh run watch -R dakaii/fantastic-spoon
+gh run watch 29188090281 -R dakaii/fantastic-spoon   # watch a specific run ID
 ```
 
 ### Full deploy (greenfield or re-deploy)
