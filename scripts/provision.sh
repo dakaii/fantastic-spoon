@@ -47,7 +47,7 @@ case "$PROVISIONER" in
     terraform apply -auto-approve
     terraform output -raw ansible_inventory > "${REPO_ROOT}/${INVENTORY_REL}"
     if terraform output -json cluster_meta &>/dev/null; then
-      terraform output -json cluster_meta > "${REPO_ROOT}/${INVENTORY_REL%.yml}-meta.json"
+      terraform output -json cluster_meta > "${REPO_ROOT}/${INVENTORY_REL%.yml}.meta.json"
     fi
     echo "Inventory written: ${INVENTORY_REL}"
     ;;
@@ -66,7 +66,7 @@ case "$PROVISIONER" in
     terraform apply -auto-approve
     terraform output -raw ansible_inventory > "${REPO_ROOT}/${INVENTORY_REL}"
     if terraform output -json cluster_meta &>/dev/null; then
-      terraform output -json cluster_meta > "${REPO_ROOT}/${INVENTORY_REL%.yml}-meta.json"
+      terraform output -json cluster_meta > "${REPO_ROOT}/${INVENTORY_REL%.yml}.meta.json"
     fi
     echo "Inventory written: ${INVENTORY_REL}"
     echo "Verify VM IPs: virsh domifaddr <node-name>"

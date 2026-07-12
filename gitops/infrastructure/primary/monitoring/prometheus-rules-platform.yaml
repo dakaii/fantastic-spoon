@@ -1,0 +1,79 @@
+# Platform-specific alerts: GitOps, backups, ingress — critical for DR/failover.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: hybrid-k8s-platform
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+    app.kubernetes.io/part-of: hybrid-k8s-platform
+spec:
+  groups:
+    - name: hybrid-k8s.platform
+      interval: 60s
+      rules:
+        - alert: VeleroBackupFailed
+          expr: |
+            velero_backup_last_status{schedule!=""} == 0
+          for: 5m
+          labels:
+            severity: critical
+            component: velero
+          annotations:
+            summary: "Velero scheduled backup failed"
+            description: "The most recent Velero scheduled backup did not complete successfully. DR capability is compromised."
+            runbook_url: "https://github.com/dakaii/fantastic-spoon/blob/main/docs/MONITORING.md#velerobackupfailed"
+
+        - alert: VeleroNoRecentBackup
+          expr: |
+            (time() - velero_backup_last_successful_timestamp{schedule!=""}) > 21600
+          for: 15m
+          labels:
+            severity: warning
+            component: velero
+          annotations:
+            summary: "No successful Velero backup in 6+ hours"
+            description: "Last successful scheduled backup was more than 6 hours ago."
+
+        - alert: ArgoCDAppUnhealthy
+          expr: |
+            argocd_app_info{health_status!="Healthy"} == 1
+          for: 10m
+          labels:
+            severity: warning
+            component: argocd
+          annotations:
+            summary: "Argo CD app {{ $labels.name }} is unhealthy"
+            description: "Application health status is {{ $labels.health_status }} for more than 10 minutes."
+
+        - alert: ArgoCDAppSyncFailed
+          expr: |
+            argocd_app_info{sync_status="OutOfSync"} == 1
+          for: 15m
+          labels:
+            severity: warning
+            component: argocd
+          annotations:
+            summary: "Argo CD app {{ $labels.name }} is out of sync"
+            description: "Application has been OutOfSync for 15+ minutes."
+
+        - alert: TraefikDown
+          expr: |
+            kube_deployment_status_replicas_available{namespace="traefik",deployment="traefik"} == 0
+          for: 3m
+          labels:
+            severity: critical
+            component: ingress
+          annotations:
+            summary: "Traefik ingress has no available replicas"
+            description: "No Traefik pods available — external traffic cannot be routed."
+
+        - alert: PrometheusTargetDown
+          expr: up == 0
+          for: 5m
+          labels:
+            severity: warning
+            component: monitoring
+          annotations:
+            summary: "Prometheus scrape target {{ $labels.job }} is down"
+            description: "Target {{ $labels.instance }} has been unreachable for 5 minutes."

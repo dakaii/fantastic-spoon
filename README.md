@@ -57,6 +57,7 @@ scripts/bootstrap-cluster.sh   ← Layer 2 entry point
 
 ## Documentation
 
+- [Monitoring — Prometheus alerts + Grafana](docs/MONITORING.md)
 - [Portable architecture — swap EC2 for on-prem](docs/PORTABLE-ARCHITECTURE.md)
 - [Phase 1 Runbook — Primary cluster](docs/PHASE-1-RUNBOOK.md)
 - [Phase 2 Runbook — Standby + backups](docs/PHASE-2-RUNBOOK.md)

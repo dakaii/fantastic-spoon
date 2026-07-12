@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: infra-monitoring
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: hybrid-k8s-platform
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/dakaii/fantastic-spoon.git
+    targetRevision: main
+    path: gitops/infrastructure/primary/monitoring
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
