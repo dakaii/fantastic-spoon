@@ -11,5 +11,5 @@ fi
 "${REPO_ROOT}/scripts/bootstrap-cluster.sh" standby
 
 echo ""
-echo "Standby NLB: check cloud-services terraform output or inventory meta file"
+echo "Standby LB IP: terraform -chdir=cloud-services-gcp output standby_lb_ip"
 echo "Next: register standby in primary Argo CD (gitops/argocd/clusters/cloud-standby.yaml)"

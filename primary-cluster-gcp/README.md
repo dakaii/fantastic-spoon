@@ -4,7 +4,7 @@ Provisions GCE VMs for the primary k3s cluster.
 
 ## Prerequisites
 
-1. [GCP account](https://console.cloud.google.com) (your own — e.g. daiki815@gmail.com)
+1. [GCP account](https://console.cloud.google.com) (your own Google account)
 2. Create a **project** (recommended: separate projects for dev/staging/prod)
 3. Enable APIs:
    ```bash

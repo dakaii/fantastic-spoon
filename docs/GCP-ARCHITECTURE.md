@@ -10,7 +10,7 @@ GCP is the **default cloud provider** for this repo. AWS modules remain availabl
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
-| Cloud provider | **GCP** | Multi-project management under one account (e.g. daiki815@gmail.com) |
+| Cloud provider | **GCP** | Multi-project management under one Google account |
 | IaC | **Terraform** (multi-project) | Separation of primary, standby, shared services |
 | "Bare metal" emulation | **GCE instances directly** | No nested VMs — GCE *is* your bare-metal equivalent |
 | Kubernetes | **k3s** (self-managed on GCE) | No GKE — saves managed cluster fees |

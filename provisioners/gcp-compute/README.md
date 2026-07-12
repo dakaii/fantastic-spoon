@@ -2,7 +2,7 @@
 
 Creates GCE VMs via Terraform. Treats cloud VMs as bare-metal equivalents — you own the OS, install k3s yourself.
 
-Use your own GCP account (e.g. `daiki815@gmail.com`). Separate projects for dev/staging/prod are recommended.
+Use your own GCP account. Separate projects for dev/staging/prod are recommended.
 
 ## Projects
 
@@ -22,6 +22,13 @@ gcloud services enable compute.googleapis.com storage.googleapis.com --project=Y
 ```
 
 ## Usage
+
+```bash
+# Easiest — login, create local config, deploy infra + Linkding
+chmod +x scripts/gcp-*.sh
+./scripts/gcp-deploy.sh
+
+See [docs/GCP-DEPLOY.md](../docs/GCP-DEPLOY.md) for auth details and GitHub Actions comparison.
 
 ```bash
 cp config/clusters.example.yaml config/clusters.yaml

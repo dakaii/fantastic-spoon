@@ -23,9 +23,14 @@ cp cloud-services-gcp/terraform.tfvars.example cloud-services-gcp/terraform.tfva
 
 gcloud auth application-default login
 
-chmod +x scripts/*.sh
-./scripts/phase1-primary.sh
-./scripts/phase2-standby.sh
+chmod +x scripts/gcp-*.sh scripts/phase*.sh
+./scripts/gcp-deploy.sh          # login → config → infra → Linkding (recommended)
+
+# Or step by step — see docs/GCP-DEPLOY.md
+# ./scripts/gcp-deploy.sh auth
+# ./scripts/gcp-deploy.sh init
+# ./scripts/gcp-deploy.sh infra
+# ./scripts/gcp-deploy.sh apps
 
 # Deploy apps via Argo CD (after cluster bootstrap)
 kubectl apply -f gitops/argocd/applications/root-app.yaml
@@ -78,6 +83,7 @@ scripts/bootstrap-cluster.sh      ← Layer 2 entry point
 ## Documentation
 
 - [GCP Architecture (default)](docs/GCP-ARCHITECTURE.md)
+- [GCP Deploy guide — local scripts vs GitHub Actions](docs/GCP-DEPLOY.md)
 - [Monitoring — Prometheus alerts + Grafana](docs/MONITORING.md)
 - [Portable architecture — swap cloud for on-prem](docs/PORTABLE-ARCHITECTURE.md)
 - [Phase 1 Runbook — Primary cluster](docs/PHASE-1-RUNBOOK.md)
