@@ -1,0 +1,16 @@
+# Copy to terraform.tfvars:
+# cp terraform.tfvars.example terraform.tfvars
+
+gcp_project = "your-gcp-project-id"
+gcp_region  = "us-central1"
+gcp_zones   = ["us-central1-a", "us-central1-b"]
+
+project_name = "hybrid-k8s"
+
+ssh_public_key = "ssh-ed25519 AAAA... you@host"
+admin_cidr     = "203.0.113.10/32"
+
+control_plane_count          = 1
+worker_count                 = 2
+control_plane_machine_type   = "e2-small"
+worker_machine_type          = "e2-small"

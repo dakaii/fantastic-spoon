@@ -32,6 +32,26 @@ INVENTORY_REL=$(get_config "$CLUSTER" inventory)
 echo "==> Provision cluster: ${CLUSTER} (provider: ${PROVISIONER})"
 
 case "$PROVISIONER" in
+  gcp-compute)
+    if [[ -z "$TF_DIR" ]]; then
+      echo "ERROR: terraform_dir required for gcp-compute provisioner"
+      exit 1
+    fi
+    TF_PATH="${REPO_ROOT}/${TF_DIR}"
+    if [[ ! -f "${TF_PATH}/terraform.tfvars" ]]; then
+      echo "Create ${TF_PATH}/terraform.tfvars from terraform.tfvars.example"
+      exit 1
+    fi
+    cd "$TF_PATH"
+    terraform init
+    terraform apply -auto-approve
+    terraform output -raw ansible_inventory > "${REPO_ROOT}/${INVENTORY_REL}"
+    if terraform output -json cluster_meta &>/dev/null; then
+      terraform output -json cluster_meta > "${REPO_ROOT}/${INVENTORY_REL%.yml}.meta.json"
+    fi
+    echo "Inventory written: ${INVENTORY_REL}"
+    ;;
+
   aws-ec2)
     if [[ -z "$TF_DIR" ]]; then
       echo "ERROR: terraform_dir required for aws-ec2 provisioner"
@@ -88,7 +108,7 @@ case "$PROVISIONER" in
 
   *)
     echo "ERROR: Unknown provisioner '${PROVISIONER}'"
-    echo "Supported: aws-ec2, libvirt, on-prem"
+    echo "Supported: gcp-compute, aws-ec2, libvirt, on-prem"
     exit 1
     ;;
 esac

@@ -1,10 +1,10 @@
-# Phase 1 Runbook — Primary k3s Cluster on AWS
+# Phase 1 Runbook — Primary k3s Cluster
 
-Deploy the primary EC2-based k3s cluster. Complete this before Phase 2 (standby).
+Deploy the primary cloud-based k3s cluster. Complete this before Phase 2 (standby).
 
 ## Portable design
 
-This runbook uses the **aws-ec2** provisioner by default. To use on-prem or libvirt instead, change `config/clusters.yaml` — see [PORTABLE-ARCHITECTURE.md](PORTABLE-ARCHITECTURE.md).
+This runbook uses the **gcp-compute** provisioner by default (`primary-cluster-gcp/`). For AWS use `primary-cluster/` with `aws-ec2`; for on-prem or libvirt change `config/clusters.yaml` — see [PORTABLE-ARCHITECTURE.md](PORTABLE-ARCHITECTURE.md) and [GCP-ARCHITECTURE.md](GCP-ARCHITECTURE.md).
 
 ## Prerequisites
 
@@ -13,26 +13,28 @@ Install these on your **local machine** (the Terraform/Ansible control node):
 | Tool | Version | Install |
 |------|---------|---------|
 | Terraform | ≥ 1.5 | https://developer.hashicorp.com/terraform/install |
-| AWS CLI | v2 | `aws configure` with access key or SSO |
+| Google Cloud SDK | latest | `gcloud auth application-default login` |
 | Ansible | ≥ 2.15 | `pip install ansible` |
 | SSH key | ed25519 | `ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519` |
 
-Verify AWS access:
+Verify GCP access:
 
 ```bash
-aws sts get-caller-identity
+gcloud auth list
+gcloud config get-value project
 ```
 
 ## Step 1 — Configure variables
 
 ```bash
-cd primary-cluster
+cd primary-cluster-gcp
 cp terraform.tfvars.example terraform.tfvars
 ```
 
 Edit `terraform.tfvars`:
 
 ```hcl
+gcp_project    = "your-gcp-project-id"
 ssh_public_key = "ssh-ed25519 AAAA... your-key"
 admin_cidr     = "YOUR.IP.ADDRESS/32"   # curl -s ifconfig.me
 ```
@@ -47,7 +49,7 @@ chmod +x scripts/phase1-primary.sh scripts/wait-for-nodes.sh
 Or manually:
 
 ```bash
-cd primary-cluster
+cd primary-cluster-gcp
 terraform init
 terraform apply
 terraform output -raw ansible_inventory > ../ansible/inventory/primary-hosts.yml
@@ -78,12 +80,12 @@ kubectl get pods -A
 
 Expected output: 3 nodes `Ready` (1 control plane + 2 workers in dev profile).
 
-## Step 4 — Verify ingress NLB
+## Step 4 — Verify ingress load balancer
 
 ```bash
-cd primary-cluster
-terraform output primary_nlb_dns_name
-# curl -k https://<nlb-dns-name>  (after Traefik is up)
+cd primary-cluster-gcp
+terraform output primary_lb_ip
+# curl -k https://<lb-ip>  (after Traefik is up)
 ```
 
 ## What gets installed
@@ -102,8 +104,8 @@ terraform output primary_nlb_dns_name
 
 **SSH connection refused**
 - Wait 2–3 minutes for cloud-init to finish
-- Check security group allows your IP in `admin_cidr`
-- Verify instance is running: `aws ec2 describe-instances --filters "Name=tag:Cluster,Values=primary"`
+- Check firewall allows your IP in `admin_cidr`
+- Verify instance is running: `gcloud compute instances list --filter="labels.cluster=primary"`
 
 **Ansible k3s install fails**
 - SSH to node manually: `ssh ubuntu@<ip>`
@@ -115,14 +117,14 @@ terraform output primary_nlb_dns_name
 
 ## Cost while running
 
-Dev profile (1 CP + 2 workers, t4g.small): **~$36/month**
+Dev profile (1 CP + 2 workers, e2-small): **~$36/month**
 
 Remember to destroy when not in use:
 
 ```bash
-cd primary-cluster && terraform destroy
+cd primary-cluster-gcp && terraform destroy
 ```
 
 ## Next
 
-→ [Phase 2 Runbook](PHASE-2-RUNBOOK.md) — standby cluster + S3 backups
+→ [Phase 2 Runbook](PHASE-2-RUNBOOK.md) — standby cluster + GCS backups

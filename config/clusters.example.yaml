@@ -1,25 +1,39 @@
 # Cluster topology — copy to clusters.yaml and edit
 #
 # Switch provisioners here without changing Ansible or GitOps.
-# Supported provisioners: aws-ec2, libvirt, on-prem
+# Supported provisioners: gcp-compute, aws-ec2, libvirt, on-prem
 
 primary:
-  provisioner: aws-ec2
-  terraform_dir: primary-cluster
+  provisioner: gcp-compute
+  terraform_dir: primary-cluster-gcp
   inventory: ansible/inventory/primary-hosts.yml
   profile: primary
 
 standby:
-  provisioner: aws-ec2
-  terraform_dir: cloud-services
+  provisioner: gcp-compute
+  terraform_dir: cloud-services-gcp
   inventory: ansible/inventory/standby-hosts.yml
   profile: standby
 
-# --- Example: on-prem primary + AWS standby (hybrid) ---
+# --- Example: on-prem primary + GCP standby (hybrid) ---
 #
 # primary:
 #   provisioner: on-prem
 #   inventory: ansible/inventory/on-prem.primary.yml
+#   profile: primary
+#
+# standby:
+#   provisioner: gcp-compute
+#   terraform_dir: cloud-services-gcp
+#   inventory: ansible/inventory/standby-hosts.yml
+#   profile: standby
+
+# --- Example: AWS (alternative cloud) ---
+#
+# primary:
+#   provisioner: aws-ec2
+#   terraform_dir: primary-cluster
+#   inventory: ansible/inventory/primary-hosts.yml
 #   profile: primary
 #
 # standby:

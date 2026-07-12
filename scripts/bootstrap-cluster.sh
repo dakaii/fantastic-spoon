@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # bootstrap-cluster.sh — Layer 2: Bootstrap k3s on any provisioner
-# Works identically for aws-ec2, libvirt, and on-prem inventories.
+# Works identically for gcp-compute, aws-ec2, libvirt, and on-prem inventories.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -65,9 +65,13 @@ if [[ -f "$META_FILE" ]]; then
     BUCKET=$(jq -r '.velero_bucket // empty' "$META_FILE")
     KEY=$(jq -r '.velero_access_key // empty' "$META_FILE")
     SECRET=$(jq -r '.velero_secret_key // empty' "$META_FILE")
+    VPROVIDER=$(jq -r '.velero_provider // "aws"' "$META_FILE")
+    VREGION=$(jq -r '.velero_region // empty' "$META_FILE")
     [[ -n "$BUCKET" ]] && EXTRA_VARS+=(-e "velero_bucket=${BUCKET}")
     [[ -n "$KEY" ]] && EXTRA_VARS+=(-e "velero_access_key=${KEY}")
     [[ -n "$SECRET" ]] && EXTRA_VARS+=(-e "velero_secret_key=${SECRET}")
+    [[ -n "$VPROVIDER" ]] && EXTRA_VARS+=(-e "velero_provider=${VPROVIDER}")
+    [[ -n "$VREGION" ]] && EXTRA_VARS+=(-e "velero_region=${VREGION}")
   fi
 fi
 
