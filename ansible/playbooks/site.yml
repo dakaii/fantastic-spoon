@@ -18,16 +18,11 @@
   roles:
     - k3s-agent
 
-- name: Deploy cluster add-ons (primary — full stack)
+- name: Deploy cluster add-ons
   hosts: k3s_server[0]
   become: true
-  when: cluster_profile | default('primary') == 'primary'
   roles:
-    - k3s-addons
-
-- name: Deploy cluster add-ons (standby — lightweight)
-  hosts: k3s_server[0]
-  become: true
-  when: cluster_profile | default('primary') == 'standby'
-  roles:
-    - k3s-addons-standby
+    - role: k3s-addons
+      when: cluster_profile | default('primary') == 'primary'
+    - role: k3s-addons-standby
+      when: cluster_profile | default('primary') == 'standby'
