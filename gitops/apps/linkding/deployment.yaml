@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: linkding
+  namespace: linkding
+  labels:
+    app: linkding
+    app.kubernetes.io/part-of: hybrid-k8s-platform
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: linkding
+  template:
+    metadata:
+      labels:
+        app: linkding
+    spec:
+      containers:
+        - name: linkding
+          image: sissbruecker/linkding:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 9090
+              protocol: TCP
+          env:
+            - name: LD_SERVER_PORT
+              value: "9090"
+            # Optional: set admin user on first boot (uncomment and create secret)
+            # - name: LD_SUPERUSER_NAME
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: linkding-admin
+            #       key: username
+            # - name: LD_SUPERUSER_PASSWORD
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: linkding-admin
+            #       key: password
+          volumeMounts:
+            - name: data
+              mountPath: /etc/linkding/data
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: linkding-data
