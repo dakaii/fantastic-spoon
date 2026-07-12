@@ -15,7 +15,7 @@ if [[ ! -f "$INVENTORY" ]]; then
   exit 1
 fi
 
-mapfile -t HOSTS < <(inventory_ansible_hosts "$INVENTORY")
+inventory_read_ansible_hosts HOSTS "$INVENTORY"
 
 if [[ ${#HOSTS[@]} -eq 0 ]]; then
   echo "No ansible_host entries found in $INVENTORY"
