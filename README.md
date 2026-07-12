@@ -16,28 +16,15 @@ Layer 1  provisioners/          gcp-compute | aws-ec2 | libvirt | on-prem  ← s
 ## Quick Start (GCP — default)
 
 ```bash
-cp config/clusters.example.yaml config/clusters.yaml
-cp primary-cluster-gcp/terraform.tfvars.example primary-cluster-gcp/terraform.tfvars
-cp cloud-services-gcp/terraform.tfvars.example cloud-services-gcp/terraform.tfvars
-# edit terraform.tfvars (gcp_project, ssh_public_key, admin_cidr)
-
-gcloud auth application-default login
-
-chmod +x scripts/gcp-*.sh scripts/phase*.sh
-./scripts/gcp-deploy.sh          # login → config → infra → Linkding (recommended)
-
-# Or step by step — see docs/GCP-DEPLOY.md
-# ./scripts/gcp-deploy.sh auth
-# ./scripts/gcp-deploy.sh init
-# ./scripts/gcp-deploy.sh infra
-# ./scripts/gcp-deploy.sh apps
-
-# Deploy apps via Argo CD (after cluster bootstrap)
-kubectl apply -f gitops/argocd/applications/root-app.yaml
-# Linkding bookmarks app: gitops/apps/linkding/
+gcloud auth application-default login   # once per machine
+./setup.sh                            # everything else
 ```
 
-Use your own GCP account — separate projects per environment are supported. See [docs/GCP-ARCHITECTURE.md](docs/GCP-ARCHITECTURE.md).
+Tear down when idle: `./setup.sh destroy`
+
+Optional: `GCP_PROJECT=hybrid-k8s-dev ./setup.sh`
+
+Details: [docs/GCP-DEPLOY.md](docs/GCP-DEPLOY.md)
 
 ## Quick Start (On-Prem Primary)
 
