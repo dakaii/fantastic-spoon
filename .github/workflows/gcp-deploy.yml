@@ -1,4 +1,4 @@
-# Manual GCP deploy — EXPERIMENTAL (see docs/GCP-DEPLOY.md)
+# Manual GCP deploy — EXPERIMENTAL (see docs/GCP-DEPLOY.md, docs/GITHUB-ACTIONS-SETUP.md)
 #
 # Limitations:
 #   - Requires GCP service account JSON in GitHub secrets
@@ -40,7 +40,11 @@ jobs:
           terraform_version: "~> 1.5"
 
       - name: Install Ansible and tools
-        run: pip install ansible
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq jq
+          pip install ansible
+          ansible-galaxy collection install -r ansible/requirements.yml
 
       - name: Configure SSH key for Ansible
         env:
