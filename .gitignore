@@ -19,6 +19,7 @@ shared-services-gcp/cloud_function/witness.zip
 # Secrets
 *.pem
 .env
+.secrets/
 
 # OS / editor
 .DS_Store

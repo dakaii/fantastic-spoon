@@ -16,7 +16,25 @@ Run k3s bootstrap from GitHub’s cloud so you can close your laptop. Works on a
 
 ## One-time setup (~15 minutes)
 
-### 1. Create a GCP service account
+### Quick setup (script)
+
+From your Mac (after `gcloud auth login`):
+
+```bash
+GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-setup-github-actions.sh --push-secrets
+```
+
+This creates the `github-actions` service account, downloads a JSON key to `.secrets/` (gitignored), and pushes GitHub secrets via `gh` CLI.
+
+For full Terraform deploy workflow later, add `--full`:
+
+```bash
+GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-setup-github-actions.sh --full --push-secrets
+```
+
+### Manual setup (alternative)
+
+#### 1. Create a GCP service account
 
 In [GCP Console → IAM → Service Accounts](https://console.cloud.google.com/iam-admin/serviceaccounts) (project `hybrid-k8s-dev`):
 
