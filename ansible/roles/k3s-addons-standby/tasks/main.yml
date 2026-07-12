@@ -33,8 +33,7 @@
     chart_ref: argo/argo-cd
     release_namespace: argocd
     create_namespace: true
-    values_files:
-      - "{{ playbook_dir }}/../../gitops/argocd/standby/values.yaml"
+    values: "{{ lookup('file', playbook_dir + '/../../gitops/argocd/standby/values.yaml') | from_yaml }}"
 
 - name: Install Velero on standby (AWS S3)
   kubernetes.core.helm:

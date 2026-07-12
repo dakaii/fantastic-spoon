@@ -54,8 +54,7 @@
     chart_ref: argo/argo-cd
     release_namespace: argocd
     create_namespace: true
-    values_files:
-      - "{{ playbook_dir }}/../../gitops/argocd/primary/values.yaml"
+    values: "{{ lookup('file', playbook_dir + '/../../gitops/argocd/primary/values.yaml') | from_yaml }}"
 
 - name: Install kube-prometheus-stack
   kubernetes.core.helm:
