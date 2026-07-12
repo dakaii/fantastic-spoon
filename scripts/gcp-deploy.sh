@@ -18,8 +18,9 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-# shellcheck source=inventory-utils.sh
-source "${REPO_ROOT}/scripts/inventory-utils.sh"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=scripts/inventory-utils.sh
+source "${SCRIPT_DIR}/inventory-utils.sh"
 PRIMARY_TFVARS="${REPO_ROOT}/primary-cluster-gcp/terraform.tfvars"
 STANDBY_TFVARS="${REPO_ROOT}/cloud-services-gcp/terraform.tfvars"
 CONFIG="${REPO_ROOT}/config/clusters.yaml"

@@ -3,7 +3,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck source=inventory-utils.sh
+# shellcheck source=scripts/inventory-utils.sh
 source "${SCRIPT_DIR}/inventory-utils.sh"
 
 INVENTORY="${1:?Usage: wait-for-nodes.sh <inventory-file>}"
