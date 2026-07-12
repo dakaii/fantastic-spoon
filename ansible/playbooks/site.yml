@@ -21,6 +21,9 @@
 - name: Deploy cluster add-ons
   hosts: k3s_server[0]
   become: true
+  module_defaults:
+    kubernetes.core.helm:
+      kubeconfig: /etc/rancher/k3s/k3s.yaml
   roles:
     - role: k3s-addons
       when: cluster_profile | default('primary') == 'primary'
