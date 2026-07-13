@@ -1,0 +1,33 @@
+---
+- name: Clear stuck Argo CD Helm release before install attempt {{ attempt_num }}
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/../includes/argocd-helm-cleanup.yml"
+
+- name: Install Argo CD chart (no Helm wait) attempt {{ attempt_num }}
+  kubernetes.core.helm:
+    name: argocd
+    chart_ref: argo/argo-cd
+    release_namespace: argocd
+    create_namespace: false
+    values: "{{ argocd_helm_values }}"
+    wait: false
+  register: argocd_helm_attempt
+  failed_when: false
+
+- name: Mark Argo CD Helm install succeeded
+  ansible.builtin.set_fact:
+    argocd_helm_installed: true
+  when: argocd_helm_attempt is succeeded
+
+- name: Log Argo CD Helm install failure for attempt {{ attempt_num }}
+  ansible.builtin.debug:
+    msg: >-
+      Argo CD Helm install attempt {{ attempt_num }} failed:
+      {{ argocd_helm_attempt.msg | default(argocd_helm_attempt.stderr | default('unknown error')) }}
+  when: argocd_helm_attempt is failed
+
+- name: Pause before retrying Argo CD Helm install
+  ansible.builtin.pause:
+    seconds: 45
+  when:
+    - argocd_helm_attempt is failed
+    - attempt_num < 3

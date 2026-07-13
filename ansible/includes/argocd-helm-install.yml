@@ -1,18 +1,21 @@
 ---
 # Install Argo CD without blocking on Helm --wait (slow API on e2-micro standby).
-# Apply the chart, then poll deployments with kubectl retries.
-- name: Install Argo CD chart (no Helm wait)
-  kubernetes.core.helm:
-    name: argocd
-    chart_ref: argo/argo-cd
-    release_namespace: argocd
-    create_namespace: false
-    values: "{{ argocd_helm_values }}"
-    wait: false
-  register: argocd_helm_install
-  retries: 3
-  delay: 45
-  until: argocd_helm_install is succeeded
+# Clean up stuck releases between attempts so pending-install does not block retries.
+- name: Initialize Argo CD Helm install state
+  ansible.builtin.set_fact:
+    argocd_helm_installed: false
+
+- name: Install Argo CD chart with cleanup between attempts
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/../includes/argocd-helm-install-attempt.yml"
+  loop: "{{ range(1, 4) | list }}"
+  loop_control:
+    loop_var: attempt_num
+  when: not argocd_helm_installed
+
+- name: Fail if Argo CD Helm install did not succeed
+  ansible.builtin.fail:
+    msg: Argo CD Helm install failed after 3 attempts. Check for stuck helm secrets in argocd namespace.
+  when: not argocd_helm_installed
 
 - name: Wait for Argo CD server Ready
   ansible.builtin.command: >-

@@ -1,0 +1,52 @@
+---
+# Force-clear stuck Argo CD Helm releases (common after failed installs on slow API servers).
+- name: Force-clear stuck Argo CD Helm release
+  ansible.builtin.shell: |
+    set -euo pipefail
+    export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+
+    delete_helm_secrets() {
+      kubectl get secrets -n argocd -o name 2>/dev/null \
+        | grep 'secret/sh.helm.release.v1.argocd' \
+        | xargs -r kubectl delete -n argocd --ignore-not-found --wait=false \
+        || true
+    }
+
+    delete_hook_jobs() {
+      kubectl delete jobs -n argocd \
+        -l app.kubernetes.io/component=redis-secret-init \
+        --ignore-not-found --wait=false || true
+    }
+
+    force_clear() {
+      echo "Force-clearing argocd Helm release..."
+      delete_hook_jobs
+      helm uninstall argocd -n argocd --no-hooks --wait=false 2>/dev/null || true
+      delete_helm_secrets
+    }
+
+    delete_hook_jobs
+
+    if ! helm status argocd -n argocd >/dev/null 2>&1; then
+      if kubectl get secrets -n argocd -o name 2>/dev/null | grep -q 'sh.helm.release.v1.argocd'; then
+        force_clear
+      fi
+      exit 0
+    fi
+
+    status="$(helm status argocd -n argocd -o json 2>/dev/null | jq -r '.info.status // "unknown"')"
+    case "$status" in
+      deployed)
+        echo "Argo CD release is deployed; skipping cleanup"
+        ;;
+      pending-install|pending-upgrade|pending-rollback|failed|uninstalling|unknown)
+        force_clear
+        ;;
+      *)
+        echo "Argo CD release status: ${status} (no cleanup)"
+        ;;
+    esac
+  args:
+    executable: /bin/bash
+  changed_when: false
+  failed_when: false
