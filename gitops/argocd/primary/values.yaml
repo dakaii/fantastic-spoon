@@ -12,6 +12,9 @@ redisSecretInit:
 server:
   service:
     type: NodePort
+    # Traefik ingress uses 30080/30443; avoid NodePort collision.
+    nodePortHttp: 32080
+    nodePortHttps: 32443
   replicas: 1
 
 configs:
