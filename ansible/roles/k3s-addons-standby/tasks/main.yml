@@ -53,23 +53,8 @@
   changed_when: false
   failed_when: false
 
-- name: Check if Argo CD CRDs already exist
-  ansible.builtin.command: k3s kubectl get crd applications.argoproj.io
-  register: argocd_crds_exist
-  changed_when: false
-  failed_when: false
-
-- name: Ensure Argo CD namespace and Redis secret exist
-  ansible.builtin.shell: |
-    set -euo pipefail
-    export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
-    kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
-    if ! kubectl get secret argocd-redis -n argocd >/dev/null 2>&1; then
-      kubectl create secret generic argocd-redis -n argocd \
-        --from-literal=auth="$(openssl rand -base64 32)"
-    fi
-  args:
-    executable: /bin/bash
+- name: Prepare Argo CD namespace and prerequisites
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/../includes/argocd-prereqs.yml"
 
 - name: Build Argo CD Helm values
   ansible.builtin.set_fact:
