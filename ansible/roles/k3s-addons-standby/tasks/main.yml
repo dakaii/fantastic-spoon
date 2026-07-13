@@ -24,34 +24,8 @@
         websecure:
           nodePort: 30443
 
-- name: Clean Argo CD hook jobs from prior failed runs
-  ansible.builtin.shell: |
-    set -euo pipefail
-    export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
-    kubectl delete jobs -n argocd \
-      -l app.kubernetes.io/component=redis-secret-init \
-      --ignore-not-found --wait=false || true
-  args:
-    executable: /bin/bash
-  changed_when: false
-  failed_when: false
-
 - name: Clear stuck Argo CD Helm release from prior failed runs
-  ansible.builtin.shell: |
-    set -euo pipefail
-    export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
-    if helm status argocd -n argocd >/dev/null 2>&1; then
-      status="$(helm status argocd -n argocd -o json | jq -r '.info.status')"
-      case "$status" in
-        pending-install|pending-upgrade|pending-rollback|failed)
-          helm uninstall argocd -n argocd --wait --timeout 5m || true
-          ;;
-      esac
-    fi
-  args:
-    executable: /bin/bash
-  changed_when: false
-  failed_when: false
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/../includes/argocd-helm-cleanup.yml"
 
 - name: Prepare Argo CD namespace and prerequisites
   ansible.builtin.include_tasks: "{{ playbook_dir }}/../includes/argocd-prereqs.yml"
