@@ -24,6 +24,9 @@
   module_defaults:
     kubernetes.core.helm:
       kubeconfig: /etc/rancher/k3s/k3s.yaml
+      binary_path: /usr/local/bin/helm
+    kubernetes.core.helm_repository:
+      binary_path: /usr/local/bin/helm
   roles:
     - role: k3s-addons
       when: cluster_profile | default('primary') == 'primary'
