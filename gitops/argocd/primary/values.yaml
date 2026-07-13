@@ -1,5 +1,14 @@
 # Argo CD on primary cluster — active GitOps controller.
 
+# CRDs: Ansible sets crds.install=false when CRDs already exist (kept after helm uninstall).
+crds:
+  install: true
+  keep: true
+
+# Avoid flaky redis-secret-init pre-install hook; Ansible creates argocd-redis secret first.
+redisSecretInit:
+  enabled: false
+
 server:
   service:
     type: NodePort

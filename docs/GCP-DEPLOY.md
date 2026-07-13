@@ -28,6 +28,12 @@ Your Google account is only used when you run:
 ./scripts/gcp-deploy.sh auth
 ```
 
+Switch account + project (when you have multiple Google accounts):
+
+```bash
+GCP_PROJECT=hybrid-k8s-dev GCP_ACCOUNT=you@gmail.com ./scripts/gcp-use-project.sh
+```
+
 That opens a browser, you sign in, and credentials are stored **locally** under `~/.config/gcloud/`. Terraform reads Application Default Credentials automatically.
 
 **Nothing about your email or password goes into this repository.**
@@ -81,18 +87,24 @@ Best for: validating Terraform on every PR, team workflows, repeatable deploys a
 This repo includes:
 
 - **`terraform-validate.yml`** — runs on every PR (no GCP secrets needed)
-- **`gcp-deploy.yml`** — manual `workflow_dispatch` only; requires GCP setup below
+- **`gcp-bootstrap.yml`** — manual bootstrap on existing GCE VMs
+- **`gcp-deploy-all.yml`** — manual full deploy (Terraform + Ansible + apps)
+- **`gcp-destroy.yml`** — manual teardown (`terraform destroy`)
 
-### Setting up GitHub Actions deploy (later)
+See **[GITHUB-ACTIONS-SETUP.md](GITHUB-ACTIONS-SETUP.md)** for step-by-step secret setup.
 
-1. Create a GCP service account with roles: `Compute Admin`, `Storage Admin`, `Service Account User`
-2. Store in GitHub repo secrets:
-   - `GCP_PROJECT`
-   - `GCP_SA_KEY` (JSON key — or prefer [Workload Identity Federation](https://cloud.google.com/iam/docs/workload-identity-federation-with-deployment-pipelines) for production)
-   - `SSH_PUBLIC_KEY`
-   - `SSH_PRIVATE_KEY` (matching pair — required for Ansible over SSH)
-   - `ADMIN_CIDR` (must allow GitHub Actions runner IPs, or use a self-hosted runner)
-3. Run workflow manually from Actions tab → **GCP Deploy (Experimental)** → Run workflow
+**Note:** GCP project creation is manual (Console). GitHub Actions handles deploy and destroy only.
+
+### Setting up GitHub Actions bootstrap (recommended)
+
+1. Create a GCP service account (see [GITHUB-ACTIONS-SETUP.md](GITHUB-ACTIONS-SETUP.md))
+2. Store in GitHub repo secrets: `GCP_PROJECT`, `GCP_SA_KEY`, `SSH_PRIVATE_KEY`
+3. Open SSH firewall (`admin_cidr`) so GitHub runners can reach VMs
+4. Run **Actions → GCP Bootstrap → Run workflow** (cluster: `primary`)
+
+For full Terraform deploy from CI (advanced), also add `SSH_PUBLIC_KEY`, `ADMIN_CIDR`, and configure remote Terraform state.
+
+### Setting up full GitHub Actions deploy (advanced)
 
 **Note:** The GHA workflow only supports `infra` (not `apps`). Run `./scripts/gcp-deploy.sh apps` locally after infra succeeds.
 

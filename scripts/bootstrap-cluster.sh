@@ -4,6 +4,9 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=scripts/inventory-utils.sh
+source "${SCRIPT_DIR}/inventory-utils.sh"
 CONFIG="${REPO_ROOT}/config/clusters.yaml"
 CLUSTER="${1:?Usage: bootstrap-cluster.sh <primary|standby>}"
 
@@ -76,12 +79,21 @@ if [[ -f "$META_FILE" ]]; then
 fi
 
 echo "==> Running Ansible"
-ansible-playbook \
-  -i "$INVENTORY" \
-  "${REPO_ROOT}/ansible/playbooks/site.yml" \
-  "${EXTRA_VARS[@]}"
+ANSIBLE_DIR="${REPO_ROOT}/ansible"
+INVENTORY_FOR_ANSIBLE="${INVENTORY#"${ANSIBLE_DIR}/"}"
+if [[ "$INVENTORY_FOR_ANSIBLE" == "$INVENTORY" ]]; then
+  INVENTORY_FOR_ANSIBLE="$INVENTORY"
+fi
+
+(
+  cd "$ANSIBLE_DIR"
+  ansible-playbook \
+    -i "$INVENTORY_FOR_ANSIBLE" \
+    playbooks/site.yml \
+    "${EXTRA_VARS[@]}"
+)
 
 echo ""
 echo "==> Bootstrap complete: ${CLUSTER}"
-FIRST_CP=$(grep -A20 'k3s_server:' "$INVENTORY" | grep ansible_host | head -1 | awk '{print $2}')
+FIRST_CP="$(inventory_first_control_plane_ip "$INVENTORY")"
 echo "Verify: ssh ubuntu@${FIRST_CP} sudo k3s kubectl get nodes"

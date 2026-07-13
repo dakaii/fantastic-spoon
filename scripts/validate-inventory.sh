@@ -2,6 +2,10 @@
 # validate-inventory.sh — Check inventory matches the provider contract
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=scripts/inventory-utils.sh
+source "${SCRIPT_DIR}/inventory-utils.sh"
+
 INVENTORY="${1:?Usage: validate-inventory.sh <inventory-file>}"
 
 if [[ ! -f "$INVENTORY" ]]; then
@@ -12,18 +16,18 @@ fi
 errors=0
 
 check() {
-  if ! grep -q "$1" "$INVENTORY"; then
+  if ! inventory_has_field "$1" "$INVENTORY"; then
     echo "ERROR: Missing required field: $1"
     errors=$((errors + 1))
   fi
 }
 
-check "cluster_name:"
-check "cluster_profile:"
-check "provisioner:"
-check "k3s_server:"
-check "k3s_agent:"
-check "ansible_host:"
+check "cluster_name"
+check "cluster_profile"
+check "provisioner"
+check "k3s_server"
+check "k3s_agent"
+check "ansible_host"
 
 if grep -q "PENDING_BOOT" "$INVENTORY"; then
   echo "WARN: Inventory contains PENDING_BOOT — update ansible_host IPs before bootstrap"
@@ -35,5 +39,4 @@ if [[ $errors -gt 0 ]]; then
 fi
 
 echo "OK: $INVENTORY matches provider contract"
-hosts=$(grep -c "ansible_host:" "$INVENTORY" || true)
-echo "   $hosts node(s) defined"
+echo "   $(inventory_ansible_host_count "$INVENTORY") node(s) defined"

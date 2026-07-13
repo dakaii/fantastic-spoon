@@ -18,6 +18,9 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=scripts/inventory-utils.sh
+source "${SCRIPT_DIR}/inventory-utils.sh"
 PRIMARY_TFVARS="${REPO_ROOT}/primary-cluster-gcp/terraform.tfvars"
 STANDBY_TFVARS="${REPO_ROOT}/cloud-services-gcp/terraform.tfvars"
 CONFIG="${REPO_ROOT}/config/clusters.yaml"
@@ -110,7 +113,7 @@ write_tfvars() {
   detect_admin_cidr
   resolve_gcp_project
 
-  if [[ -f "$path" ]]; then
+  if [[ -f "$path" && "${FORCE_TFVARS:-}" != "1" ]]; then
     update_tfvars_project "$path"
     return
   fi
@@ -139,7 +142,7 @@ EOF
 
 control_plane_count        = 1
 worker_count               = 2
-control_plane_machine_type = "e2-small"
+control_plane_machine_type = "e2-medium"
 worker_machine_type        = "e2-small"
 EOF
   fi
@@ -167,11 +170,7 @@ cmd_init() {
 
 enable_gcp_apis() {
   resolve_gcp_project
-  log "Enabling GCP APIs on project ${GCP_PROJECT} (one-time, may take a minute)"
-  gcloud services enable \
-    compute.googleapis.com \
-    storage.googleapis.com \
-    --project="$GCP_PROJECT"
+  "${REPO_ROOT}/scripts/gcp-enable-apis.sh"
 }
 
 cmd_infra() {
@@ -219,17 +218,20 @@ configure_velero_on_primary() {
   fi
 
   log "Configuring Velero on primary (bucket: ${bucket})"
-  ansible-playbook \
-    -i "$inventory" \
-    "${REPO_ROOT}/ansible/playbooks/site.yml" \
-    -e cluster_profile=primary \
-    -e cluster_name=primary \
-    -e provisioner=gcp-compute \
-    -e "velero_bucket=${bucket}" \
-    -e "velero_access_key=${key}" \
-    -e "velero_secret_key=${secret}" \
-    -e "velero_provider=${vprovider}" \
-    -e "velero_region=${vregion}"
+  (
+    cd "${REPO_ROOT}/ansible"
+    ansible-playbook \
+      -i "inventory/primary-hosts.yml" \
+      playbooks/site.yml \
+      -e cluster_profile=primary \
+      -e cluster_name=primary \
+      -e provisioner=gcp-compute \
+      -e "velero_bucket=${bucket}" \
+      -e "velero_access_key=${key}" \
+      -e "velero_secret_key=${secret}" \
+      -e "velero_provider=${vprovider}" \
+      -e "velero_region=${vregion}"
+  )
 }
 
 setup_kubeconfig() {
@@ -237,7 +239,7 @@ setup_kubeconfig() {
   [[ -f "$inventory" ]] || die "Missing ${inventory} — run infra first"
 
   local cp_ip
-  cp_ip="$(grep -A20 'k3s_server:' "$inventory" | grep ansible_host | head -1 | awk '{print $2}')"
+  cp_ip="$(inventory_first_control_plane_ip "$inventory")"
   [[ -n "$cp_ip" ]] || die "Could not read control plane IP from inventory"
 
   mkdir -p "$(dirname "$KUBECONFIG_PATH")"
@@ -279,7 +281,7 @@ cmd_apps() {
   }
 
   local cp_ip lb_ip
-  cp_ip="$(grep -A20 'k3s_server:' "${REPO_ROOT}/ansible/inventory/primary-hosts.yml" | grep ansible_host | head -1 | awk '{print $2}')"
+  cp_ip="$(inventory_first_control_plane_ip "${REPO_ROOT}/ansible/inventory/primary-hosts.yml")"
   lb_ip="$(terraform -chdir="${REPO_ROOT}/primary-cluster-gcp" output -raw primary_lb_ip 2>/dev/null || true)"
 
   echo ""
