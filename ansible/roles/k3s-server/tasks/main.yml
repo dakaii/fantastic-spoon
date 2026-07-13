@@ -8,6 +8,7 @@
         --disable traefik \
         --disable servicelb \
         --write-kubeconfig-mode 644 \
+        --tls-san {{ internal_ip | default(ansible_host) }} \
         --tls-san {{ ansible_host }}" \
       sh -
   args:
@@ -20,12 +21,13 @@
   ansible.builtin.shell: |
     curl -sfL https://get.k3s.io | \
       INSTALL_K3S_VERSION="{{ k3s_version }}" \
-      K3S_URL="https://{{ hostvars[groups['k3s_server'][0]]['ansible_host'] }}:6443" \
+      K3S_URL="https://{{ hostvars[groups['k3s_server'][0]]['internal_ip'] | default(hostvars[groups['k3s_server'][0]]['ansible_host']) }}:6443" \
       K3S_TOKEN="{{ hostvars[groups['k3s_server'][0]]['k3s_node_token'] }}" \
       INSTALL_K3S_EXEC="server \
         --disable traefik \
         --disable servicelb \
         --write-kubeconfig-mode 644 \
+        --tls-san {{ internal_ip | default(ansible_host) }} \
         --tls-san {{ ansible_host }}" \
       sh -
   args:
@@ -42,6 +44,7 @@
         --disable traefik \
         --disable servicelb \
         --write-kubeconfig-mode 644 \
+        --tls-san {{ internal_ip | default(ansible_host) }} \
         --tls-san {{ ansible_host }}" \
       sh -
   args:
