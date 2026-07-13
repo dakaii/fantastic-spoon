@@ -1,0 +1,59 @@
+---
+# Shared Argo CD pre-install: wait for a slow API (e.g. e2-micro standby) and
+# create namespace + Redis secret with retries.
+- name: Wait for Kubernetes API server responsive
+  ansible.builtin.command: k3s kubectl get --raw /readyz
+  register: api_ready
+  until: api_ready.rc == 0
+  retries: 30
+  delay: 10
+  changed_when: false
+
+- name: Check if Argo CD CRDs already exist
+  ansible.builtin.command: k3s kubectl get crd applications.argoproj.io
+  register: argocd_crds_exist
+  changed_when: false
+  failed_when: false
+
+- name: Ensure Argo CD namespace and Redis secret exist
+  ansible.builtin.shell: |
+    set -euo pipefail
+    export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+
+    retry() {
+      local max="${1:?}"; shift
+      local delay="${1:?}"; shift
+      local attempt=1
+      while true; do
+        if "$@"; then
+          return 0
+        fi
+        if (( attempt >= max )); then
+          return 1
+        fi
+        sleep "$delay"
+        attempt=$((attempt + 1))
+      done
+    }
+
+    ensure_namespace() {
+      if kubectl get namespace argocd >/dev/null 2>&1; then
+        return 0
+      fi
+      kubectl create namespace argocd 2>/dev/null && return 0
+      kubectl apply -f - <<'EOF'
+    apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: argocd
+    EOF
+    }
+
+    retry 15 20 ensure_namespace
+
+    if ! kubectl get secret argocd-redis -n argocd >/dev/null 2>&1; then
+      retry 5 10 kubectl create secret generic argocd-redis -n argocd \
+        --from-literal=auth="$(openssl rand -base64 32)"
+    fi
+  args:
+    executable: /bin/bash
