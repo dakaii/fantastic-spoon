@@ -129,7 +129,7 @@ EOF
 
 control_plane_count        = 1
 worker_count               = 2
-control_plane_machine_type = "e2-small"
+control_plane_machine_type = "e2-medium"
 worker_machine_type        = "e2-small"
 EOF
   fi

@@ -131,3 +131,22 @@ Creating a GCP project requires **org/folder Project Creator** and **Billing Acc
 | Destroy does nothing | Same — state must be in GCS bucket |
 | Ansible fails | Re-run **GCP Bootstrap** (idempotent) |
 | Argo CD `failed pre-install` timeout | Fixed in bootstrap: skips `redis-secret-init` hook, pre-creates Redis secret. If stuck, `helm uninstall argocd -n argocd` then re-run bootstrap (CRDs are kept) |
+| `kubectl` / API timeouts on control plane | Control plane OOM on `e2-small` — resize to `e2-medium` (see below) |
+| `gcloud` 403 wrong account | `GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-use-project.sh` |
+
+### Resize an existing control plane (manual, one-time)
+
+Repo defaults are updated for **new** deploys. VMs already running stay `e2-small` until you resize:
+
+```bash
+GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-use-project.sh
+
+gcloud compute instances stop hybrid-k8s-cp-1 --zone=us-central1-a --project=hybrid-k8s-dev
+gcloud compute instances set-machine-type hybrid-k8s-cp-1 \
+  --zone=us-central1-a --project=hybrid-k8s-dev --machine-type=e2-medium
+gcloud compute instances start hybrid-k8s-cp-1 --zone=us-central1-a --project=hybrid-k8s-dev
+
+ssh ubuntu@136.112.126.15 "sudo systemctl restart k3s && sleep 60 && sudo k3s kubectl get nodes"
+```
+
+Or change `control_plane_machine_type` in local `terraform.tfvars` and `terraform apply` (instance must be stopped).

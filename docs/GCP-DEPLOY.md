@@ -28,6 +28,12 @@ Your Google account is only used when you run:
 ./scripts/gcp-deploy.sh auth
 ```
 
+Switch account + project (when you have multiple Google accounts):
+
+```bash
+GCP_PROJECT=hybrid-k8s-dev GCP_ACCOUNT=you@gmail.com ./scripts/gcp-use-project.sh
+```
+
 That opens a browser, you sign in, and credentials are stored **locally** under `~/.config/gcloud/`. Terraform reads Application Default Credentials automatically.
 
 **Nothing about your email or password goes into this repository.**
