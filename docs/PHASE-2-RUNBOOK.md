@@ -22,6 +22,17 @@ Or use the deploy script (creates both tfvars files):
 
 ## Step 2 — Deploy
 
+**GitHub Actions (no local `gcloud login`):**
+
+```bash
+gh workflow run gcp-phase2.yml -R dakaii/fantastic-spoon
+gh run watch -R dakaii/fantastic-spoon
+```
+
+Requires GitHub secrets with a **full** deploy service account — see [GITHUB-ACTIONS-SETUP.md](GITHUB-ACTIONS-SETUP.md).
+
+**Local:**
+
 ```bash
 ./scripts/phase2-standby.sh
 # or: ./scripts/gcp-deploy.sh infra   # includes Velero config on primary

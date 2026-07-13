@@ -11,6 +11,7 @@ Run deploy and destroy from GitHub’s cloud so you can close your laptop. Works
 | Workflow | When to use |
 |----------|-------------|
 | **GCP Bootstrap** | Ansible/k3s only — VMs already exist, need (re)bootstrap |
+| **GCP Phase 2** | Standby Terraform + bootstrap + Velero on primary (after Phase 1) |
 | **GCP Deploy All** | Full stack: Terraform + bootstrap + Linkding apps |
 | **GCP Destroy** | Tear down all resources (`terraform destroy`) |
 | **Terraform Validate** | Automatic on PRs — no secrets |
@@ -83,6 +84,25 @@ cd primary-cluster-gcp && terraform apply
 ```bash
 gh workflow run gcp-bootstrap.yml -f cluster=primary -R dakaii/fantastic-spoon
 gh run watch 29188090281 -R dakaii/fantastic-spoon   # watch a specific run ID
+```
+
+### Phase 2 (standby + GCS + Velero) — no local login
+
+Requires **full** service account (`--full` flag when running setup). Same secrets as Deploy All.
+
+Actions → **GCP Phase 2** → Run workflow
+
+```bash
+gh workflow run gcp-phase2.yml -R dakaii/fantastic-spoon
+gh run watch -R dakaii/fantastic-spoon
+```
+
+This runs: `cloud-services-gcp` Terraform → bootstrap standby → configure Velero on primary.
+
+**Bootstrap-only alternative** (if standby VMs already exist from a prior Terraform apply):
+
+```bash
+gh workflow run gcp-bootstrap.yml -f cluster=standby -R dakaii/fantastic-spoon
 ```
 
 ### Full deploy (greenfield or re-deploy)
