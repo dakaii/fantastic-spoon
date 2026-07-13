@@ -38,9 +38,9 @@ variable "worker_count" {
 }
 
 variable "control_plane_machine_type" {
-  description = "GCE machine type for control plane (e2-small ~$12/mo)"
+  description = "GCE machine type for control plane (e2-medium ~$24/mo; e2-small OOMs with Cilium+Longhorn+Argo CD)"
   type        = string
-  default     = "e2-small"
+  default     = "e2-medium"
 }
 
 variable "worker_machine_type" {
