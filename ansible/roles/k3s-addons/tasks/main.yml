@@ -21,6 +21,25 @@
   ansible.builtin.command: k3s kubectl wait --for=condition=Ready nodes --all --timeout=300s
   changed_when: false
 
+- name: Reset broken Cilium release before install (e.g. after GCP IP change)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+    if ! helm status cilium -n kube-system >/dev/null 2>&1; then
+      exit 0
+    fi
+    not_ready="$(kubectl get pods -n kube-system -l k8s-app=cilium --no-headers 2>/dev/null \
+      | awk '$3 != "Running" { print }' | wc -l | tr -d ' ')"
+    if [[ "${not_ready:-0}" -gt 0 ]]; then
+      helm uninstall cilium -n kube-system --wait --timeout 5m || true
+      kubectl delete pod -n kube-system -l k8s-app=cilium --force --grace-period=0 2>/dev/null || true
+      kubectl delete pod -n kube-system -l name=cilium-operator --force --grace-period=0 2>/dev/null || true
+    fi
+  args:
+    executable: /bin/bash
+  changed_when: false
+  failed_when: false
+
 - name: Install Cilium CNI
   kubernetes.core.helm:
     name: cilium
