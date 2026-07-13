@@ -131,6 +131,7 @@ Creating a GCP project requires **org/folder Project Creator** and **Billing Acc
 | Destroy does nothing | Same — state must be in GCS bucket |
 | Ansible fails | Re-run **GCP Bootstrap** (idempotent) |
 | Argo CD `failed pre-install` timeout | Fixed in bootstrap: skips `redis-secret-init` hook, pre-creates Redis secret. If stuck, `helm uninstall argocd -n argocd` then re-run bootstrap (CRDs are kept) |
+| Cilium TLS / `certificate is valid for ... not <new-ip>` | Ephemeral GCP IP changed — Cilium must use **internal** API IP (`10.1.0.4`), not external NAT IP. Reinstall Cilium with `k8sServiceHost=10.1.0.4` (see docs) |
 | `kubectl` / API timeouts on control plane | Control plane OOM on `e2-small` — resize to `e2-medium` (see below) |
 | `gcloud` 403 wrong account | `GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-use-project.sh` |
 

@@ -61,6 +61,10 @@ k3s_api_host="$(echo "$instances_json" | jq -r '
   [.[] | select(.labels.role == "server") | .networkInterfaces[0].accessConfigs[0].natIP][0] // empty
 ')"
 
+k3s_api_internal="$(echo "$instances_json" | jq -r '
+  [.[] | select(.labels.role == "server") | .networkInterfaces[0].networkIP][0] // empty
+')"
+
 if [[ -z "$k3s_api_host" ]]; then
   echo "ERROR: No control plane (labels.role=server) found for cluster ${CLUSTER}" >&2
   exit 1
@@ -75,7 +79,7 @@ write_host_group() {
 
   local hosts
   hosts="$(echo "$instances_json" | jq -r --arg role "$role" '
-    .[] | select(.labels.role == $role) | "\(.name)|\(.networkInterfaces[0].accessConfigs[0].natIP)"
+    .[] | select(.labels.role == $role) | "\(.name)|\(.networkInterfaces[0].accessConfigs[0].natIP)|\(.networkInterfaces[0].networkIP)"
   ' | sort)"
 
   if [[ -z "$hosts" ]]; then
@@ -83,10 +87,11 @@ write_host_group() {
     return
   fi
 
-  while IFS='|' read -r name ip; do
+  while IFS='|' read -r name ip internal_ip; do
     [[ -n "$name" && -n "$ip" ]] || continue
     echo "        ${name}:"
     echo "          ansible_host: ${ip}"
+    echo "          internal_ip: ${internal_ip}"
     echo "          node_role: ${role}"
   done <<< "$hosts"
 }
@@ -102,6 +107,7 @@ write_host_group() {
   echo "    provisioner: gcp-compute"
   echo "    ingress_host: \"${ingress_host}\""
   echo "    k3s_api_host: \"${k3s_api_host}\""
+  echo "    k3s_api_internal: \"${k3s_api_internal}\""
   echo "  children:"
   write_host_group "k3s_server" "server"
   write_host_group "k3s_agent" "agent"

@@ -3,7 +3,7 @@
   ansible.builtin.shell: |
     curl -sfL https://get.k3s.io | \
       INSTALL_K3S_VERSION="{{ k3s_version }}" \
-      K3S_URL="https://{{ hostvars[groups['k3s_server'][0]]['ansible_host'] }}:6443" \
+      K3S_URL="https://{{ hostvars[groups['k3s_server'][0]]['internal_ip'] | default(hostvars[groups['k3s_server'][0]]['ansible_host']) }}:6443" \
       K3S_TOKEN="{{ hostvars[groups['k3s_server'][0]]['k3s_node_token'] }}" \
       INSTALL_K3S_EXEC="agent{% if cluster_name == 'standby' %} --node-taint standby=true:NoSchedule{% endif %}" \
       sh -
