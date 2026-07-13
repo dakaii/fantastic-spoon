@@ -1,0 +1,33 @@
+---
+# Shared Helm bootstrap: pin v3 (Ansible kubernetes.core breaks on Helm v4) and verify CLI.
+- name: Check installed Helm version
+  ansible.builtin.command: /usr/local/bin/helm version --short
+  register: helm_version_out
+  changed_when: false
+  failed_when: false
+
+- name: Install Helm v3
+  ansible.builtin.shell: |
+    set -euo pipefail
+    curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash -s -- --version v3.17.3
+  args:
+    executable: /bin/bash
+  when: helm_version_out.rc != 0 or (helm_version_out.stdout | default('')) is not search('^v3\.')
+
+- name: Wait for Helm CLI to become ready
+  ansible.builtin.command: /usr/local/bin/helm version --short
+  register: helm_ready
+  until: helm_ready.rc == 0 and (helm_ready.stdout | default('')) is search('^v3\.')
+  retries: 10
+  delay: 3
+  changed_when: false
+
+- name: Add Helm repos
+  kubernetes.core.helm_repository:
+    name: "{{ item.name }}"
+    repo_url: "{{ item.url }}"
+  loop: "{{ helm_repos }}"
+  register: helm_repo_add
+  retries: 3
+  delay: 5
+  until: helm_repo_add is succeeded

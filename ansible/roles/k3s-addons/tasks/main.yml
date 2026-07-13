@@ -1,21 +1,14 @@
 ---
-- name: Install Helm
-  ansible.builtin.shell: |
-    curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-  args:
-    creates: /usr/local/bin/helm
-
-- name: Add Helm repos
-  kubernetes.core.helm_repository:
-    name: "{{ item.name }}"
-    repo_url: "{{ item.url }}"
-  loop:
-    - { name: cilium, url: "https://helm.cilium.io/" }
-    - { name: longhorn, url: "https://charts.longhorn.io" }
-    - { name: traefik, url: "https://traefik.github.io/charts" }
-    - { name: argo, url: "https://argoproj.github.io/argo-helm" }
-    - { name: vmware-tanzu, url: "https://vmware-tanzu.github.io/helm-charts" }
-    - { name: prometheus-community, url: "https://prometheus-community.github.io/helm-charts" }
+- name: Configure Helm
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/../includes/helm-prereqs.yml"
+  vars:
+    helm_repos:
+      - { name: cilium, url: "https://helm.cilium.io/" }
+      - { name: longhorn, url: "https://charts.longhorn.io" }
+      - { name: traefik, url: "https://traefik.github.io/charts" }
+      - { name: argo, url: "https://argoproj.github.io/argo-helm" }
+      - { name: vmware-tanzu, url: "https://vmware-tanzu.github.io/helm-charts" }
+      - { name: prometheus-community, url: "https://prometheus-community.github.io/helm-charts" }
 
 - name: Wait for Kubernetes nodes Ready
   ansible.builtin.command: k3s kubectl wait --for=condition=Ready nodes --all --timeout=300s

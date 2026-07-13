@@ -1,18 +1,15 @@
 ---
-- name: Install Helm
-  ansible.builtin.shell: |
-    curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-  args:
-    creates: /usr/local/bin/helm
+- name: Configure Helm
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/../includes/helm-prereqs.yml"
+  vars:
+    helm_repos:
+      - { name: traefik, url: "https://traefik.github.io/charts" }
+      - { name: argo, url: "https://argoproj.github.io/argo-helm" }
+      - { name: vmware-tanzu, url: "https://vmware-tanzu.github.io/helm-charts" }
 
-- name: Add Helm repos
-  kubernetes.core.helm_repository:
-    name: "{{ item.name }}"
-    repo_url: "{{ item.url }}"
-  loop:
-    - { name: traefik, url: "https://traefik.github.io/charts" }
-    - { name: argo, url: "https://argoproj.github.io/argo-helm" }
-    - { name: vmware-tanzu, url: "https://vmware-tanzu.github.io/helm-charts" }
+- name: Wait for Kubernetes nodes Ready
+  ansible.builtin.command: k3s kubectl wait --for=condition=Ready nodes --all --timeout=300s
+  changed_when: false
 
 - name: Install Traefik ingress
   kubernetes.core.helm:
@@ -27,13 +24,94 @@
         websecure:
           nodePort: 30443
 
+- name: Clean Argo CD hook jobs from prior failed runs
+  ansible.builtin.shell: |
+    set -euo pipefail
+    export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+    kubectl delete jobs -n argocd \
+      -l app.kubernetes.io/component=redis-secret-init \
+      --ignore-not-found --wait=false || true
+  args:
+    executable: /bin/bash
+  changed_when: false
+  failed_when: false
+
+- name: Clear stuck Argo CD Helm release from prior failed runs
+  ansible.builtin.shell: |
+    set -euo pipefail
+    export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+    if helm status argocd -n argocd >/dev/null 2>&1; then
+      status="$(helm status argocd -n argocd -o json | jq -r '.info.status')"
+      case "$status" in
+        pending-install|pending-upgrade|pending-rollback|failed)
+          helm uninstall argocd -n argocd --wait --timeout 5m || true
+          ;;
+      esac
+    fi
+  args:
+    executable: /bin/bash
+  changed_when: false
+  failed_when: false
+
+- name: Check if Argo CD CRDs already exist
+  ansible.builtin.command: k3s kubectl get crd applications.argoproj.io
+  register: argocd_crds_exist
+  changed_when: false
+  failed_when: false
+
+- name: Ensure Argo CD namespace and Redis secret exist
+  ansible.builtin.shell: |
+    set -euo pipefail
+    export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+    kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+    if ! kubectl get secret argocd-redis -n argocd >/dev/null 2>&1; then
+      kubectl create secret generic argocd-redis -n argocd \
+        --from-literal=auth="$(openssl rand -base64 32)"
+    fi
+  args:
+    executable: /bin/bash
+
+- name: Build Argo CD Helm values
+  ansible.builtin.set_fact:
+    argocd_helm_values: >-
+      {{
+        lookup('file', playbook_dir + '/../../gitops/argocd/standby/values.yaml') | from_yaml
+        | combine({'crds': {'install': argocd_crds_exist.rc != 0}}, recursive=True)
+      }}
+
 - name: Install Argo CD on standby
   kubernetes.core.helm:
     name: argocd
     chart_ref: argo/argo-cd
     release_namespace: argocd
     create_namespace: true
-    values: "{{ lookup('file', playbook_dir + '/../../gitops/argocd/standby/values.yaml') | from_yaml }}"
+    values: "{{ argocd_helm_values }}"
+    wait: true
+    wait_timeout: 15m0s
+
+- name: Wait for Argo CD server Ready
+  ansible.builtin.command: k3s kubectl -n argocd wait --for=condition=Available deployment/argocd-server --timeout=300s
+  changed_when: false
+
+- name: Detect whether Velero backup target is configured
+  ansible.builtin.set_fact:
+    velero_configured: >-
+      {{
+        velero_bucket is defined
+        and velero_bucket | length > 0
+        and velero_bucket != 'CHANGE_ME'
+        and velero_access_key is defined
+        and velero_access_key | length > 0
+        and velero_access_key != 'CHANGE_ME'
+        and velero_secret_key is defined
+        and velero_secret_key | length > 0
+        and velero_secret_key != 'CHANGE_ME'
+      }}
+
+- name: Skip Velero until backup bucket is configured
+  ansible.builtin.debug:
+    msg: Skipping Velero install — set velero_bucket and credentials via cloud-services meta or -e extra vars.
+  when: not velero_configured
 
 - name: Install Velero on standby (AWS S3)
   kubernetes.core.helm:
@@ -58,7 +136,7 @@
             aws_access_key_id={{ velero_access_key }}
             aws_secret_access_key={{ velero_secret_key }}
   when:
-    - velero_bucket is defined and velero_bucket != ""
+    - velero_configured
     - velero_provider | default('aws') == 'aws'
 
 - name: Install Velero on standby (GCS via S3-compatible API)
@@ -86,5 +164,5 @@
             aws_access_key_id={{ velero_access_key }}
             aws_secret_access_key={{ velero_secret_key }}
   when:
-    - velero_bucket is defined and velero_bucket != ""
+    - velero_configured
     - velero_provider | default('aws') == 'gcp'
