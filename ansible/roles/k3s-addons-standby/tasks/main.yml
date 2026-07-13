@@ -42,6 +42,7 @@
     release_namespace: velero
     create_namespace: true
     values:
+      snapshotsEnabled: false
       configuration:
         backupStorageLocation:
           - name: default
@@ -67,6 +68,7 @@
     release_namespace: velero
     create_namespace: true
     values:
+      snapshotsEnabled: false
       configuration:
         backupStorageLocation:
           - name: default
