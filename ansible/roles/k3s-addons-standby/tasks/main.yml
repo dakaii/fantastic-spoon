@@ -65,18 +65,7 @@
       }}
 
 - name: Install Argo CD on standby
-  kubernetes.core.helm:
-    name: argocd
-    chart_ref: argo/argo-cd
-    release_namespace: argocd
-    create_namespace: true
-    values: "{{ argocd_helm_values }}"
-    wait: true
-    wait_timeout: 15m0s
-
-- name: Wait for Argo CD server Ready
-  ansible.builtin.command: k3s kubectl -n argocd wait --for=condition=Available deployment/argocd-server --timeout=300s
-  changed_when: false
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/../includes/argocd-helm-install.yml"
 
 - name: Detect whether Velero backup target is configured
   ansible.builtin.set_fact:
