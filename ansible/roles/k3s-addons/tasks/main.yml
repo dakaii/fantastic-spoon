@@ -173,6 +173,26 @@
   ansible.builtin.command: k3s kubectl -n argocd wait --for=condition=Available deployment/argocd-server --timeout=300s
   changed_when: false
 
+- name: Detect whether Velero backup target is configured
+  ansible.builtin.set_fact:
+    velero_configured: >-
+      {{
+        velero_bucket is defined
+        and velero_bucket | length > 0
+        and velero_bucket != 'CHANGE_ME'
+        and velero_access_key is defined
+        and velero_access_key | length > 0
+        and velero_access_key != 'CHANGE_ME'
+        and velero_secret_key is defined
+        and velero_secret_key | length > 0
+        and velero_secret_key != 'CHANGE_ME'
+      }}
+
+- name: Skip Velero until backup bucket is configured (Phase 2)
+  ansible.builtin.debug:
+    msg: Skipping Velero install — set velero_bucket and credentials via cloud-services meta or -e extra vars.
+  when: not velero_configured
+
 - name: Install kube-prometheus-stack
   kubernetes.core.helm:
     name: kube-prometheus-stack
@@ -190,11 +210,12 @@
     release_namespace: velero
     create_namespace: true
     values:
+      snapshotsEnabled: false
       configuration:
         backupStorageLocation:
           - name: default
             provider: aws
-            bucket: "{{ velero_bucket | default('CHANGE_ME') }}"
+            bucket: "{{ velero_bucket }}"
             config:
               region: "{{ velero_region | default('us-east-1') }}"
       credentials:
@@ -202,9 +223,11 @@
         secretContents:
           cloud: |
             [default]
-            aws_access_key_id={{ velero_access_key | default('CHANGE_ME') }}
-            aws_secret_access_key={{ velero_secret_key | default('CHANGE_ME') }}
-  when: velero_provider | default('aws') == 'aws'
+            aws_access_key_id={{ velero_access_key }}
+            aws_secret_access_key={{ velero_secret_key }}
+  when:
+    - velero_configured
+    - velero_provider | default('aws') == 'aws'
 
 - name: Install Velero (GCS via S3-compatible API)
   kubernetes.core.helm:
@@ -213,6 +236,7 @@
     release_namespace: velero
     create_namespace: true
     values:
+      snapshotsEnabled: false
       configuration:
         backupStorageLocation:
           - name: default
@@ -230,6 +254,5 @@
             aws_access_key_id={{ velero_access_key }}
             aws_secret_access_key={{ velero_secret_key }}
   when:
+    - velero_configured
     - velero_provider | default('aws') == 'gcp'
-    - velero_bucket is defined
-    - velero_bucket != ""
