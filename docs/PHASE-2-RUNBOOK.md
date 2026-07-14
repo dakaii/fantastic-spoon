@@ -74,12 +74,22 @@ causes SSH timeouts (e.g. connecting to an old NAT IP).
 
 ```bash
 GCP_PROJECT=hybrid-k8s-dev ./scripts/generate-gcp-inventory.sh primary
-# Confirm SSH works:
-CP=$(grep -A2 'k3s_server:' ansible/inventory/primary-hosts.yml | awk '/ansible_host:/ {print $2; exit}')
+# Confirm SSH works (CP IP is under k3s_server → hosts → ansible_host):
+CP=$(awk '/k3s_server:/{f=1} f && /ansible_host:/{print $2; exit}' ansible/inventory/primary-hosts.yml)
 ssh ubuntu@"$CP" hostname
 
 ./scripts/configure-velero-primary.sh
 ```
+
+Or skip parsing inventory and ask GCE:
+
+```bash
+CP=$(gcloud compute instances list \
+  --filter='labels.cluster=primary AND labels.role=server' \
+  --format='value(networkInterfaces[0].accessConfigs[0].natIP)')
+ssh ubuntu@"$CP" 'sudo k3s kubectl -n velero get pods,backupstoragelocation'
+```
+
 
 Manual Ansible alternative (addons only):
 

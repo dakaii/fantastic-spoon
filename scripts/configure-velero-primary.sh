@@ -33,7 +33,9 @@ elif [[ ! -f "$INVENTORY" ]]; then
   exit 1
 fi
 
-cp_host="$(grep -A2 'k3s_server:' "$INVENTORY" | awk '/ansible_host:/ {print $2; exit}')"
+# shellcheck source=inventory-utils.sh
+source "${REPO_ROOT}/scripts/inventory-utils.sh"
+cp_host="$(inventory_first_control_plane_ip "$INVENTORY")"
 if [[ -n "$cp_host" ]]; then
   log "Primary control plane from inventory: ${cp_host}"
   if ! ssh -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=no \
