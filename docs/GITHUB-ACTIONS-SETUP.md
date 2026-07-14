@@ -144,15 +144,22 @@ Creating a GCP project requires **org/folder Project Creator** and **Billing Acc
 
 ## Troubleshooting
 
+Full write-up of failures from primary/standby bring-up (with run IDs and PRs):
+[GCP-BOOTSTRAP-ISSUES.md](GCP-BOOTSTRAP-ISSUES.md).
+
 | Problem | Fix |
 |---------|-----|
-| SSH timeout | `admin_cidr = "0.0.0.0/0"` + `terraform apply` |
+| SSH timeout | `admin_cidr` stale — update tfvars + `terraform apply` (dev: temp `0.0.0.0/0`) |
 | Deploy tries to recreate VMs | Run `./scripts/gcp-tfstate-sync.sh push` from Mac first |
 | Destroy does nothing | Same — state must be in GCS bucket |
-| Ansible fails | Re-run **GCP Bootstrap** (idempotent) |
-| Argo CD `failed pre-install` timeout | Fixed in bootstrap: skips `redis-secret-init` hook, pre-creates Redis secret. If stuck, `helm uninstall argocd -n argocd` then re-run bootstrap (CRDs are kept) |
+| Ansible fails | Re-run **GCP Bootstrap** (idempotent) after clearing stuck Helm if needed |
+| Argo CD `failed pre-install` / stuck Helm | Skip redis hook + cleanup release secrets — see issues log §8–9. Manual: `helm uninstall argocd -n argocd` then delete `sh.helm.release.v1.argocd*` |
+| NodePort `30080` already allocated | Argo CD uses `32080`/`32443` (not Traefik’s range) |
+| Velero `spec.provider: Required` | Skip until GCS bucket + HMAC from Phase 2 exist |
+| Traefik/Helm `INTERNAL_ERROR` or apt hung for hours | Standby was **e2-micro** — resize to **e2-small+** then re-bootstrap |
 | Cilium TLS / `certificate is valid for ... not <new-ip>` | Ephemeral GCP IP changed — Cilium must use **internal** API IP (`10.1.0.4`), not external NAT IP. Reinstall Cilium with `k8sServiceHost=10.1.0.4` (see docs) |
 | `kubectl` / API timeouts on control plane | Control plane OOM on `e2-small` — resize to `e2-medium` (see below) |
+| Phase 2 `Permission denied to enable service` | Owner must enable APIs / grant SA — GHA SA alone often cannot |
 | `gcloud` 403 wrong account | `GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-use-project.sh` |
 
 ### Resize an existing control plane (manual, one-time)

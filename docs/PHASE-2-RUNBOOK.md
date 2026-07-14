@@ -2,6 +2,10 @@
 
 Deploy the standby k3s cluster and GCS backup bucket. Run after Phase 1 is verified.
 
+If bootstrap fails (SSH, Helm, Argo CD, apt hangs), see
+[GCP-BOOTSTRAP-ISSUES.md](GCP-BOOTSTRAP-ISSUES.md) — most standby failures were
+caused by **e2-micro** sizing or stuck Helm release secrets.
+
 ## Portable design
 
 Uses **gcp-compute** by default (`cloud-services-gcp/`). For AWS use `cloud-services/` with `aws-ec2`. See [GCP-ARCHITECTURE.md](GCP-ARCHITECTURE.md).
