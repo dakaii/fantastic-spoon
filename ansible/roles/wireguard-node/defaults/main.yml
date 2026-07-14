@@ -1,0 +1,6 @@
+---
+# Defaults for host WireGuard gateway (overridden by inventory / vpn-bootstrap.sh).
+wg_server_address: "10.66.0.1/24"
+wg_client_address: "10.66.0.2/32"
+wg_client_name: laptop
+wireguard_port: 51820
