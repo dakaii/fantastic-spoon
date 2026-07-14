@@ -86,13 +86,22 @@ must be an `initContainer`.
 
 **Fix**  
 Add `initContainers` with `velero/velero-plugin-for-aws` (and
-`checksumAlgorithm: ""` for GCS). Re-run:
+`checksumAlgorithm: ""` for GCS). Install via Helm CLI with `--reset-values`
+and assert the Deployment has the plugin (see `ansible/includes/velero-helm-install.yml`).
+Re-run:
 
 ```bash
 GCP_PROJECT=hybrid-k8s-dev ./scripts/configure-velero-primary.sh
 ```
 
 Then check: `kubectl -n velero get backupstoragelocation` → `Available`.
+
+**Quick check that the plugin landed**
+
+```bash
+ssh ubuntu@"$CP" 'sudo k3s kubectl -n velero get deploy velero -o jsonpath="{.spec.template.spec.initContainers[*].name}"; echo'
+# expect: velero-plugin-for-aws
+```
 
 ---
 
