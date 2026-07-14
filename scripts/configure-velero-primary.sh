@@ -3,6 +3,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 META="${REPO_ROOT}/ansible/inventory/standby-hosts.meta.json"
 INVENTORY="${REPO_ROOT}/ansible/inventory/primary-hosts.yml"
 
@@ -33,8 +34,8 @@ elif [[ ! -f "$INVENTORY" ]]; then
   exit 1
 fi
 
-# shellcheck source=inventory-utils.sh
-source "${REPO_ROOT}/scripts/inventory-utils.sh"
+# shellcheck source=scripts/inventory-utils.sh
+source "${SCRIPT_DIR}/inventory-utils.sh"
 cp_host="$(inventory_first_control_plane_ip "$INVENTORY")"
 if [[ -n "$cp_host" ]]; then
   log "Primary control plane from inventory: ${cp_host}"
