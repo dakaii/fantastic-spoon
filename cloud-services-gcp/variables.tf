@@ -34,9 +34,9 @@ variable "standby_node_count" {
 }
 
 variable "standby_machine_type" {
-  description = "GCE machine type for standby nodes (e2-micro is free-tier eligible)"
+  description = "GCE machine type for standby nodes (e2-small minimum; e2-micro OOMs / times out during bootstrap)"
   type        = string
-  default     = "e2-micro"
+  default     = "e2-small"
 }
 
 variable "node_disk_gb" {

@@ -9,7 +9,7 @@ Use your own GCP account. Separate projects for dev/staging/prod are recommended
 | Cluster | Terraform dir | Instance types (dev) |
 |---------|---------------|----------------------|
 | Primary | `primary-cluster-gcp/` | 1× e2-small CP + 2× e2-small workers |
-| Standby | `cloud-services-gcp/` | 1× e2-micro CP + 1× e2-micro agent + GCS |
+| Standby | `cloud-services-gcp/` | 1× e2-small CP + 1× e2-small agent + GCS |
 
 ## Setup
 

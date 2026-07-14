@@ -52,7 +52,7 @@ Terraform apply
 │                                      │  │                                  │
 │  ┌─────────┐ ┌─────────┐ ┌────────┐ │  │  ┌─────────┐ ┌─────────┐        │
 │  │ CP-1    │ │ CP-2    │ │ CP-3   │ │  │  │ SB-1    │ │ SB-2    │        │
-│  │e2-small │ │e2-small │ │e2-small│ │  │  │e2-micro │ │e2-micro │        │
+│  │e2-medium│ │e2-small │ │e2-small│ │  │  │e2-small │ │e2-small │        │
 │  └────┬────┘ └────┬────┘ └────┬───┘ │  │  └────┬────┘ └────┬────┘        │
 │       └───────────┴───────────┘      │  │       └───────────┘               │
 │              k3s HA (embedded etcd)  │  │         k3s (standby)             │
@@ -92,7 +92,7 @@ Terraform apply
 | AWS | GCP |
 |-----|-----|
 | EC2 t4g.small | GCE e2-small |
-| EC2 t4g.micro (standby) | GCE e2-micro (free tier eligible) |
+| EC2 t4g.micro (standby) | GCE e2-small (e2-micro free tier is too small for k3s bootstrap) |
 | S3 | GCS |
 | Lambda witness | Cloud Function (Gen2) |
 | Step Functions | Cloud Workflows |
@@ -126,7 +126,7 @@ Apply order: `primary-cluster-gcp` → `cloud-services-gcp` → Ansible → `sha
 
 1. Sign in at [console.cloud.google.com](https://console.cloud.google.com) with your Google account
 2. Create a project (e.g. `hybrid-k8s-dev`) — repeat for staging/prod as needed
-3. Link billing (free tier covers 1× e2-micro in US regions)
+3. Link billing (e2-micro free tier exists but is insufficient for k3s; use e2-small+)
 4. Authenticate Terraform:
    ```bash
    gcloud auth application-default login
@@ -156,9 +156,9 @@ Apply order: `primary-cluster-gcp` → `cloud-services-gcp` → Ansible → `sha
 
 | Node | Role | Type | ~$/mo |
 |------|------|------|-------|
-| sb-1, sb-2 | server + agent | e2-micro | ~$0–12 (1 free tier) |
+| sb-1, sb-2 | server + agent | e2-small | ~$12–14 |
 | GCS backups | 100 GB | Standard | ~$2 |
-| **Subtotal** | | | **~$2–14** |
+| **Subtotal** | | | **~$14–16** |
 
 ### Shared Services
 

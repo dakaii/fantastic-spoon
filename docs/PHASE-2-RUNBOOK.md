@@ -12,6 +12,16 @@ Uses **gcp-compute** by default (`cloud-services-gcp/`). For AWS use `cloud-serv
 cd cloud-services-gcp
 cp terraform.tfvars.example terraform.tfvars
 # Use same gcp_project, ssh_public_key and admin_cidr as primary-cluster-gcp
+# Set standby_machine_type = "e2-small" (default). Do not use e2-micro.
+```
+
+If standby VMs already exist as `e2-micro`, update `terraform.tfvars` and re-apply
+(`allow_stopping_for_update` stops/starts them in place):
+
+```bash
+# cloud-services-gcp/terraform.tfvars
+standby_machine_type = "e2-small"
+terraform -chdir=cloud-services-gcp apply
 ```
 
 Or use the deploy script (creates both tfvars files):
@@ -39,7 +49,7 @@ Requires GitHub secrets with a **full** deploy service account — see [GITHUB-A
 ```
 
 This creates:
-- 2× GCE standby nodes (1 server + 1 agent, e2-micro)
+- 2× GCE standby nodes (1 server + 1 agent, e2-small minimum — e2-micro times out during bootstrap)
 - GCS bucket for Velero backups
 - External TCP load balancer for standby ingress
 - HMAC keys for Velero (S3-compatible API)

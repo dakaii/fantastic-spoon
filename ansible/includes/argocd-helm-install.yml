@@ -1,5 +1,5 @@
 ---
-# Install Argo CD without blocking on Helm --wait (slow API on e2-micro standby).
+# Install Argo CD without blocking on Helm --wait (slow API on small VMs).
 # Clean up stuck releases between attempts so pending-install does not block retries.
 - name: Initialize Argo CD Helm install state
   ansible.builtin.set_fact:

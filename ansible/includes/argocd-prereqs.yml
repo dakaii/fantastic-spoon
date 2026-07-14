@@ -1,5 +1,5 @@
 ---
-# Shared Argo CD pre-install: wait for a slow API (e.g. e2-micro standby) and
+# Shared Argo CD pre-install: wait for a slow API (e.g. small standby VMs) and
 # create namespace + Redis secret with retries.
 - name: Wait for Kubernetes API server responsive
   ansible.builtin.command: k3s kubectl get --raw /readyz
