@@ -347,6 +347,33 @@ matches.
 
 ---
 
+### 16. Velero on primary — SSH to stale CP IP / worker `k3s_node_token`
+
+**Symptom**
+
+```text
+Failed to connect to the host via ssh: ... 136.x.x.x port 22: Operation timed out
+object of type 'HostVarsVars' has no attribute 'k3s_node_token'
+```
+
+while running `./scripts/configure-velero-primary.sh`.
+
+**Cause**  
+`ansible/inventory/primary-hosts.yml` still had an **old ephemeral NAT IP**. Full
+`site.yml` then failed on the CP and left workers without `k3s_node_token`.
+
+**Fix**  
+Refresh inventory, confirm SSH, then run addons-only Velero config:
+
+```bash
+GCP_PROJECT=hybrid-k8s-dev ./scripts/generate-gcp-inventory.sh primary
+./scripts/configure-velero-primary.sh   # regenerates inventory + --tags addons
+```
+
+If SSH still times out, update `admin_cidr` on the **primary** firewall (same as §5).
+
+---
+
 ## Checklist after a failed bootstrap
 
 1. Confirm machine types (primary CP `e2-medium`, standby ≥ `e2-small`).

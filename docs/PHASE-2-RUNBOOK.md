@@ -69,7 +69,19 @@ ssh ubuntu@$SB_IP "sudo k3s kubectl get nodes"
 
 If you used `./scripts/gcp-deploy.sh infra`, Velero on primary is configured automatically.
 
-Manual alternative:
+**Refresh inventory first** — GCP ephemeral IPs change; a stale `primary-hosts.yml`
+causes SSH timeouts (e.g. connecting to an old NAT IP).
+
+```bash
+GCP_PROJECT=hybrid-k8s-dev ./scripts/generate-gcp-inventory.sh primary
+# Confirm SSH works:
+CP=$(grep -A2 'k3s_server:' ansible/inventory/primary-hosts.yml | awk '/ansible_host:/ {print $2; exit}')
+ssh ubuntu@"$CP" hostname
+
+./scripts/configure-velero-primary.sh
+```
+
+Manual Ansible alternative (addons only):
 
 ```bash
 cd cloud-services-gcp
@@ -79,6 +91,7 @@ SECRET=$(terraform output -raw velero_secret_access_key)
 
 cd ../ansible
 ansible-playbook -i inventory/primary-hosts.yml playbooks/site.yml \
+  --tags addons --limit 'k3s_server[0]' \
   -e cluster_profile=primary \
   -e cluster_name=primary \
   -e provisioner=gcp-compute \
