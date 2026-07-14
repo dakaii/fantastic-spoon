@@ -13,13 +13,35 @@ if [[ ! -f "$META" ]]; then
   exit 0
 fi
 
-if [[ ! -f "$INVENTORY" ]]; then
+# Always refresh primary inventory from live GCE when possible — ephemeral NAT
+# IPs change often and a stale primary-hosts.yml causes SSH timeouts / false failures.
+if command -v gcloud >/dev/null 2>&1; then
   if [[ -z "${GCP_PROJECT:-}" ]]; then
+    GCP_PROJECT="$(gcloud config get-value project 2>/dev/null || true)"
+  fi
+  if [[ -n "${GCP_PROJECT:-}" ]]; then
+    log "Refreshing primary inventory from GCE (project: ${GCP_PROJECT})"
+    GCP_PROJECT="${GCP_PROJECT}" "${REPO_ROOT}/scripts/generate-gcp-inventory.sh" primary
+  elif [[ ! -f "$INVENTORY" ]]; then
     echo "ERROR: Missing ${INVENTORY} and GCP_PROJECT is unset (cannot generate inventory)" >&2
     exit 1
+  else
+    log "WARN: gcloud has no project set — using existing ${INVENTORY} (may be stale)"
   fi
-  log "Generating primary inventory from GCE"
-  "${REPO_ROOT}/scripts/generate-gcp-inventory.sh" primary
+elif [[ ! -f "$INVENTORY" ]]; then
+  echo "ERROR: Missing ${INVENTORY} and gcloud is unavailable" >&2
+  exit 1
+fi
+
+cp_host="$(grep -A2 'k3s_server:' "$INVENTORY" | awk '/ansible_host:/ {print $2; exit}')"
+if [[ -n "$cp_host" ]]; then
+  log "Primary control plane from inventory: ${cp_host}"
+  if ! ssh -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=no \
+      "ubuntu@${cp_host}" true 2>/dev/null; then
+    echo "ERROR: Cannot SSH to primary CP ${cp_host}" >&2
+    echo "  Check admin_cidr / firewall, or: GCP_PROJECT=... ./scripts/generate-gcp-inventory.sh primary" >&2
+    exit 1
+  fi
 fi
 
 bucket=$(jq -r '.velero_bucket // empty' "$META")
@@ -36,9 +58,12 @@ fi
 log "Configuring Velero on primary (bucket: ${bucket})"
 (
   cd "${REPO_ROOT}/ansible"
+  # --tags addons: skip common/k3s; --limit first server only
   ansible-playbook \
     -i "inventory/primary-hosts.yml" \
     playbooks/site.yml \
+    --tags addons \
+    --limit 'k3s_server[0]' \
     -e cluster_profile=primary \
     -e cluster_name=primary \
     -e provisioner=gcp-compute \

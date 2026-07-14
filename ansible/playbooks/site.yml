@@ -2,6 +2,7 @@
 - name: Bootstrap hybrid k8s platform nodes
   hosts: all
   become: true
+  tags: [common, bootstrap]
   roles:
     - common
 
@@ -9,18 +10,21 @@
   hosts: k3s_server
   become: true
   serial: 1
+  tags: [k3s, bootstrap]
   roles:
     - k3s-server
 
 - name: Join k3s worker agents
   hosts: k3s_agent
   become: true
+  tags: [k3s, bootstrap]
   roles:
     - k3s-agent
 
 - name: Deploy cluster add-ons
   hosts: k3s_server[0]
   become: true
+  tags: [addons]
   module_defaults:
     kubernetes.core.helm:
       kubeconfig: /etc/rancher/k3s/k3s.yaml
