@@ -35,6 +35,7 @@ terraform output -raw ansible_inventory > ../ansible/inventory/primary-hosts.yml
 | Workers (×2) | e2-small | ~$24 |
 | **Total** | | **~$36** |
 
-e2-micro is free-tier eligible but tight for k3s control plane — use for standby nodes.
+e2-micro is free-tier eligible but too small for k3s + addons (primary or standby).
+Use e2-medium for the control plane and e2-small (or larger) for workers and standby.
 
 See [docs/GCP-ARCHITECTURE.md](../docs/GCP-ARCHITECTURE.md).

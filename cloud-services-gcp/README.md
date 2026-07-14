@@ -23,12 +23,15 @@ terraform output -json cluster_meta > ../ansible/inventory/standby-hosts.meta.js
 ../scripts/bootstrap-cluster.sh standby
 ```
 
-## Cost estimate (2× e2-micro standby)
+## Cost estimate (2× e2-small standby)
 
 | Resource | Type | ~$/month |
 |----------|------|----------|
-| Standby nodes (×2) | e2-micro | ~$0–12 (1 free tier eligible) |
+| Standby nodes (×2) | e2-small | ~$12–14 |
 | GCS backups (100 GB) | Standard | ~$2 |
-| **Total** | | **~$2–14** |
+| **Total** | | **~$14–16** |
+
+`e2-micro` is free-tier eligible but too small for k3s + Traefik + Argo CD bootstrap
+(apt/API timeouts). Use `e2-small` or larger.
 
 See [docs/GCP-ARCHITECTURE.md](../docs/GCP-ARCHITECTURE.md).

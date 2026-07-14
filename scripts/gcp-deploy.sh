@@ -135,7 +135,7 @@ EOF
     cat >> "$path" <<EOF
 
 standby_node_count   = 2
-standby_machine_type = "e2-micro"
+standby_machine_type = "e2-small"
 EOF
   else
     cat >> "$path" <<EOF

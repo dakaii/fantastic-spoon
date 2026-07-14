@@ -108,6 +108,9 @@ resource "google_compute_instance" "standby" {
   machine_type = var.standby_machine_type
   zone         = each.value.zone
 
+  # Allow in-place resize when bumping off e2-micro (Terraform stops/starts the VM).
+  allow_stopping_for_update = true
+
   tags = ["${var.project_name}-standby", "k3s-${each.value.role}"]
 
   boot_disk {
