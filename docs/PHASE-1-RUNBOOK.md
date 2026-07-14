@@ -66,8 +66,8 @@ ansible-playbook -i inventory/primary-hosts.yml playbooks/site.yml \
 ## Step 3 — Verify cluster
 
 ```bash
-# Get first control plane IP from inventory
-CP_IP=$(grep ansible_host ansible/inventory/primary-hosts.yml | head -1 | awk '{print $2}')
+# Get control plane IP from inventory (or use gcloud — see PHASE-2-RUNBOOK Step 4)
+CP_IP=$(awk '/k3s_server:/{f=1} f && /ansible_host:/{print $2; exit}' ansible/inventory/primary-hosts.yml)
 
 # Copy kubeconfig locally
 ssh ubuntu@$CP_IP "sudo cat /etc/rancher/k3s/k3s.yaml" > ~/.kube/hybrid-primary.yaml

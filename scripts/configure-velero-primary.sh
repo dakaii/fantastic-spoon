@@ -3,6 +3,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 META="${REPO_ROOT}/ansible/inventory/standby-hosts.meta.json"
 INVENTORY="${REPO_ROOT}/ansible/inventory/primary-hosts.yml"
 
@@ -33,7 +34,9 @@ elif [[ ! -f "$INVENTORY" ]]; then
   exit 1
 fi
 
-cp_host="$(grep -A2 'k3s_server:' "$INVENTORY" | awk '/ansible_host:/ {print $2; exit}')"
+# shellcheck source=scripts/inventory-utils.sh
+source "${SCRIPT_DIR}/inventory-utils.sh"
+cp_host="$(inventory_first_control_plane_ip "$INVENTORY")"
 if [[ -n "$cp_host" ]]; then
   log "Primary control plane from inventory: ${cp_host}"
   if ! ssh -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=no \
