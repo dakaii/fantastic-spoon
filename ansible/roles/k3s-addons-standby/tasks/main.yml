@@ -69,6 +69,13 @@
     create_namespace: true
     values:
       snapshotsEnabled: false
+      initContainers:
+        - name: velero-plugin-for-aws
+          image: "{{ velero_aws_plugin_image | default('velero/velero-plugin-for-aws:v1.14.0') }}"
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - mountPath: /target
+              name: plugins
       configuration:
         backupStorageLocation:
           - name: default
@@ -95,6 +102,13 @@
     create_namespace: true
     values:
       snapshotsEnabled: false
+      initContainers:
+        - name: velero-plugin-for-aws
+          image: "{{ velero_aws_plugin_image | default('velero/velero-plugin-for-aws:v1.14.0') }}"
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - mountPath: /target
+              name: plugins
       configuration:
         backupStorageLocation:
           - name: default
@@ -104,6 +118,7 @@
               region: "{{ velero_region | default('auto') }}"
               s3ForcePathStyle: "true"
               s3Url: https://storage.googleapis.com
+              checksumAlgorithm: ""
       credentials:
         useSecret: true
         secretContents:
