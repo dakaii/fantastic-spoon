@@ -90,6 +90,9 @@ CP=$(gcloud compute instances list \
 ssh ubuntu@"$CP" 'sudo k3s kubectl -n velero get pods,backupstoragelocation'
 ```
 
+Expect `BackupStorageLocation` Phase=`Available`. If you see
+`unable to locate ObjectStore plugin named velero.io/aws`, pull the AWS plugin
+fix and re-run the script (see [GCP-BOOTSTRAP-ISSUES.md](GCP-BOOTSTRAP-ISSUES.md) §2b).
 
 Manual Ansible alternative (addons only):
 
