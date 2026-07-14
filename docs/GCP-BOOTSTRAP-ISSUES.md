@@ -69,6 +69,33 @@ After standby infra: `./scripts/configure-velero-primary.sh` or `gcp-deploy.sh i
 
 ---
 
+### 2b. Velero BSL Unavailable — missing AWS plugin
+
+**Symptom**
+
+```text
+BackupStorageLocation "default" is unavailable: unable to locate ObjectStore plugin named velero.io/aws
+```
+
+Pod Running, BSL Phase `Unavailable`.
+
+**Cause**  
+The Velero Helm chart does not install object-store plugins by default. GCS is
+accessed via the S3-compatible API (`provider: aws`), so `velero-plugin-for-aws`
+must be an `initContainer`.
+
+**Fix**  
+Add `initContainers` with `velero/velero-plugin-for-aws` (and
+`checksumAlgorithm: ""` for GCS). Re-run:
+
+```bash
+GCP_PROJECT=hybrid-k8s-dev ./scripts/configure-velero-primary.sh
+```
+
+Then check: `kubectl -n velero get backupstoragelocation` → `Available`.
+
+---
+
 ### 3. Control plane OOM / API timeouts on `e2-small`
 
 **Symptom**  
