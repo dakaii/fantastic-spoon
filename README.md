@@ -75,6 +75,7 @@ scripts/bootstrap-cluster.sh      ← Layer 2 entry point
 - [Portable architecture — swap cloud for on-prem](docs/PORTABLE-ARCHITECTURE.md)
 - [Phase 1 Runbook — Primary cluster](docs/PHASE-1-RUNBOOK.md)
 - [Phase 2 Runbook — Standby + backups](docs/PHASE-2-RUNBOOK.md)
+- [GCP Bootstrap Issues — errors & fixes log](docs/GCP-BOOTSTRAP-ISSUES.md)
 - [AWS Architecture (alternative)](docs/AWS-ARCHITECTURE.md)
 - [GCP Compute provisioner](provisioners/gcp-compute/README.md)
 - [On-prem provisioner](provisioners/on-prem/README.md)

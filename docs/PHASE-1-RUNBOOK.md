@@ -102,6 +102,8 @@ terraform output primary_lb_ip
 
 ## Troubleshooting
 
+Longer log of failures (NodePort, Velero, sizing, Cilium IP): [GCP-BOOTSTRAP-ISSUES.md](GCP-BOOTSTRAP-ISSUES.md).
+
 **SSH connection refused**
 - Wait 2–3 minutes for cloud-init to finish
 - Check firewall allows your IP in `admin_cidr`
@@ -114,6 +116,7 @@ terraform output primary_lb_ip
 **Cilium helm fails**
 - Ensure k3s is running: `sudo k3s kubectl get nodes`
 - Cilium needs kernel modules — cloud-init loads them
+- After a GCP public IP change, point Cilium at the **internal** API IP (see issues log)
 
 ## Cost while running
 
