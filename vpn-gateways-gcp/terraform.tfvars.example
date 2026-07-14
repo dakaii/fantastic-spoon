@@ -1,0 +1,22 @@
+# Copy to terraform.tfvars:
+# cp terraform.tfvars.example terraform.tfvars
+#
+# Reuse the same gcp_project / ssh_public_key / admin_cidr as primary-cluster-gcp.
+# This stack is isolated (own VPC + state) and does not modify primary/standby.
+
+gcp_project = "your-gcp-project-id"
+gcp_region  = "us-central1"
+gcp_zone    = "us-central1-a"
+
+project_name = "hybrid-k8s"
+city         = "us"
+
+ssh_public_key = "ssh-ed25519 AAAA... you@host"
+admin_cidr     = "203.0.113.10/32"
+
+# Optional: allow WG from additional CIDRs (phones on cellular, etc.)
+# vpn_client_cidrs = ["203.0.113.10/32", "198.51.100.0/24"]
+
+machine_type      = "e2-small"
+wireguard_port    = 51820
+reserve_static_ip = true

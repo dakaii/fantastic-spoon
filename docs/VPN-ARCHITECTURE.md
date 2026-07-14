@@ -1,7 +1,9 @@
 # Multi-Region WireGuard VPN Gateways — Design Doc
 
-**Status:** Proposed (additive to fantastic-spoon)  
-**Goal:** Highly available, multi-city (multi-region) WireGuard exits you can use day-to-day, deployed on the existing portable k3s platform — **without** building a consumer VPN product or a custom client app.
+**Status:** V1 implemented (additive host WireGuard)  
+**Goal:** Highly available, multi-city (multi-region) WireGuard exits you can use day-to-day, deployed beside the existing portable k3s platform — **without** building a consumer VPN product or a custom client app.
+
+See [VPN-RUNBOOK.md](VPN-RUNBOOK.md) to deploy the first city.
 
 ---
 
@@ -250,19 +252,19 @@ Reuse kube-prometheus:
 ### Phase V0 — Design locked (this doc)
 
 - [x] Scope: multi-city WG on fantastic-spoon, stock clients
-- [ ] Confirm first two cities: `us-central1` + `asia-east2` (or cheaper second region)
-- [ ] Confirm dedicated gateway VM vs agent on existing worker
+- [x] Confirm first city: `us-central1` (`city=us`)
+- [x] Dedicated gateway VM (not k3s agent) for V1
 
 ### Phase V1 — Single city MVP (us-central1)
 
-**Outcome:** One WG exit; laptop reaches internet (or private platform) via tunnel.
+**Outcome:** One WG exit; laptop reaches internet via tunnel.
 
-1. Terraform: 1× `e2-small` gateway (or label existing agent), firewall UDP/51820  
-2. Ansible: sysctl IP forward, WireGuard tools / chart deps  
-3. Helm: WireGuard server + Secret  
-4. Generate client config; connect from Mac  
-5. Verify: `curl ifconfig.me` shows GCE egress IP when full tunnel; private curl to Traefik when split  
-6. Document in `docs/VPN-RUNBOOK.md` (create when implementing)
+1. [x] Terraform: `vpn-gateways-gcp/` — 1× `e2-small`, firewall UDP/51820  
+2. [x] Ansible: `playbooks/vpn-gateway.yml` + `roles/wireguard-node`  
+3. [x] Host WireGuard (in-cluster Helm deferred — see `charts/wireguard-gateway/`)  
+4. [x] Client config: `scripts/generate-wg-client-config.sh` + `vpn-bootstrap.sh`  
+5. [ ] Verify: `curl ifconfig.me` shows GCE egress IP when full tunnel  
+6. [x] `docs/VPN-RUNBOOK.md`
 
 **Exit criteria:** Stable handshake; deliberate disconnect/reconnect works; keys not in git.
 
@@ -347,17 +349,17 @@ Do **not** block on Phase 4 shared-services DNS. Do **not** start a client app.
 |------|----------|-------|
 | 2026-07-14 | WireGuard + stock clients; multi-region exits | No custom app |
 | 2026-07-14 | Additive to fantastic-spoon | Not a greenfield rewrite |
-| TBD | Dedicated VM vs shared worker | Prefer dedicated for V1 |
-| TBD | First two regions | Suggest us-central1 + asia-east2 |
-
+| 2026-07-14 | Dedicated VM (host WG), not k3s agent | Avoids inventory/ApplicationSet coupling |
+| TBD | First second city region | Suggest asia-east2 (`city=hk`) |
 ---
 
-## 12. Next action
+## Next action
 
-Start **Phase V1** with a PR that only adds:
+V1 code landed under `vpn-gateways-gcp/` + `scripts/vpn-bootstrap.sh`.
 
-1. One gateway VM + firewall  
-2. Working server + one client config  
-3. `docs/VPN-RUNBOOK.md` with connect/verify/destroy steps  
+1. Copy `vpn-gateways-gcp/terraform.tfvars.example` → `terraform.tfvars`  
+2. `terraform -chdir=vpn-gateways-gcp apply`  
+3. `./scripts/vpn-bootstrap.sh`  
+4. Import `vpn-clients/us/laptop-us.conf` into WireGuard  
 
-Then open Phase V2 (second city) only after V1 is boringly reliable.
+Then Phase V2 (second city) only after V1 is boringly reliable.

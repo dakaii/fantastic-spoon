@@ -57,14 +57,16 @@ provisioners/                     ← gcp-compute, aws-ec2, libvirt, on-prem
 primary-cluster-gcp/              ← GCP primary Terraform (default)
 cloud-services-gcp/               ← GCP standby + GCS
 shared-services-gcp/              ← GCP failover layer
+vpn-gateways-gcp/                 ← WireGuard city gateways (additive; own VPC)
 primary-cluster/                  ← AWS alternative
 cloud-services/                   ← AWS alternative
 bare-metal-simulation/            ← libvirt local VMs
-ansible/                          ← provider-agnostic bootstrap
+ansible/                          ← provider-agnostic bootstrap (+ vpn-gateway playbook)
 gitops/                           ← provider-agnostic apps
 shared-services/                  ← AWS failover layer
 scripts/provision.sh              ← Layer 1 entry point
 scripts/bootstrap-cluster.sh      ← Layer 2 entry point
+scripts/vpn-bootstrap.sh          ← WireGuard city bootstrap (additive)
 ```
 
 ## Documentation
@@ -76,7 +78,8 @@ scripts/bootstrap-cluster.sh      ← Layer 2 entry point
 - [Phase 1 Runbook — Primary cluster](docs/PHASE-1-RUNBOOK.md)
 - [Phase 2 Runbook — Standby + backups](docs/PHASE-2-RUNBOOK.md)
 - [GCP Bootstrap Issues — errors & fixes log](docs/GCP-BOOTSTRAP-ISSUES.md)
-- [VPN Architecture — multi-region WireGuard gateways (proposed)](docs/VPN-ARCHITECTURE.md)
+- [VPN Architecture — multi-region WireGuard gateways](docs/VPN-ARCHITECTURE.md)
+- [VPN Runbook — deploy / verify / destroy a city](docs/VPN-RUNBOOK.md)
 - [AWS Architecture (alternative)](docs/AWS-ARCHITECTURE.md)
 - [GCP Compute provisioner](provisioners/gcp-compute/README.md)
 - [On-prem provisioner](provisioners/on-prem/README.md)

@@ -21,6 +21,11 @@ shared-services-gcp/cloud_function/witness.zip
 .env
 .secrets/
 
+# WireGuard local client/server keys + profiles (never commit)
+vpn-clients/**
+!vpn-clients/.gitkeep
+ansible/inventory/vpn-hosts.yml
+
 # OS / editor
 .DS_Store
 .idea/

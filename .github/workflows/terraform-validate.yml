@@ -21,6 +21,7 @@ jobs:
           - primary-cluster-gcp
           - cloud-services-gcp
           - shared-services-gcp
+          - vpn-gateways-gcp
           - primary-cluster
           - cloud-services
           - shared-services
