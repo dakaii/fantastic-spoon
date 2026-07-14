@@ -1,0 +1,146 @@
+# Install/upgrade Velero with the AWS object-store plugin initContainer.
+# Uses Helm CLI + --reset-values so nested initContainers are reliably applied
+# (kubernetes.core.helm alone left BSL Unavailable: missing velero.io/aws).
+#
+# Expects:
+#   velero_bucket, velero_access_key, velero_secret_key
+#   velero_provider (aws|gcp), velero_region (optional)
+#   velero_aws_plugin_image (optional)
+---
+- name: Resolve Velero Helm install parameters
+  ansible.builtin.set_fact:
+    velero_chart_version: "{{ velero_chart_version | default('12.1.0') }}"
+    velero_plugin_image: "{{ velero_aws_plugin_image | default('velero/velero-plugin-for-aws:v1.14.0') }}"
+    velero_values_path: /tmp/velero-helm-values.yaml
+    velero_creds_path: /tmp/velero-cloud-credentials
+
+- name: Write Velero cloud credentials file
+  ansible.builtin.copy:
+    dest: "{{ velero_creds_path }}"
+    mode: "0600"
+    content: |
+      [default]
+      aws_access_key_id={{ velero_access_key }}
+      aws_secret_access_key={{ velero_secret_key }}
+  no_log: true
+
+- name: Write Velero Helm values (AWS S3)
+  ansible.builtin.copy:
+    dest: "{{ velero_values_path }}"
+    mode: "0600"
+    content: |
+      snapshotsEnabled: false
+      initContainers:
+        - name: velero-plugin-for-aws
+          image: "{{ velero_plugin_image }}"
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - mountPath: /target
+              name: plugins
+      configuration:
+        backupStorageLocation:
+          - name: default
+            provider: aws
+            bucket: "{{ velero_bucket }}"
+            config:
+              region: "{{ velero_region | default('us-east-1') }}"
+      credentials:
+        useSecret: true
+        secretContents:
+          cloud: |
+            [default]
+            aws_access_key_id={{ velero_access_key }}
+            aws_secret_access_key={{ velero_secret_key }}
+  no_log: true
+  when: velero_provider | default('aws') == 'aws'
+
+- name: Write Velero Helm values (GCS via S3-compatible API)
+  ansible.builtin.copy:
+    dest: "{{ velero_values_path }}"
+    mode: "0600"
+    content: |
+      snapshotsEnabled: false
+      initContainers:
+        - name: velero-plugin-for-aws
+          image: "{{ velero_plugin_image }}"
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - mountPath: /target
+              name: plugins
+      configuration:
+        backupStorageLocation:
+          - name: default
+            provider: aws
+            bucket: "{{ velero_bucket }}"
+            config:
+              region: "{{ velero_region | default('auto') }}"
+              s3ForcePathStyle: "true"
+              s3Url: https://storage.googleapis.com
+              checksumAlgorithm: ""
+      credentials:
+        useSecret: true
+        secretContents:
+          cloud: |
+            [default]
+            aws_access_key_id={{ velero_access_key }}
+            aws_secret_access_key={{ velero_secret_key }}
+  no_log: true
+  when: velero_provider | default('aws') == 'gcp'
+
+- name: Install or upgrade Velero with Helm CLI (--reset-values)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+    helm upgrade --install velero vmware-tanzu/velero \
+      --namespace velero \
+      --create-namespace \
+      --version "{{ velero_chart_version }}" \
+      --reset-values \
+      -f "{{ velero_values_path }}" \
+      --wait \
+      --timeout 10m
+  register: velero_helm_upgrade
+
+- name: Verify Velero deployment has AWS plugin initContainer
+  ansible.builtin.shell: |
+    set -euo pipefail
+    export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+    names="$(kubectl -n velero get deploy velero -o jsonpath='{.spec.template.spec.initContainers[*].name}' 2>/dev/null || true)"
+    echo "initContainers: ${names}"
+    echo "${names}" | grep -q 'velero-plugin-for-aws'
+  register: velero_plugin_check
+  changed_when: false
+
+- name: Wait for Velero pods Ready
+  ansible.builtin.command: >
+    k3s kubectl -n velero wait --for=condition=Available deployment/velero --timeout=180s
+  changed_when: false
+
+- name: Wait for BackupStorageLocation Available
+  ansible.builtin.shell: |
+    set -euo pipefail
+    export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+    for i in $(seq 1 36); do
+      phase="$(kubectl -n velero get backupstoragelocation default -o jsonpath='{.status.phase}' 2>/dev/null || true)"
+      msg="$(kubectl -n velero get backupstoragelocation default -o jsonpath='{.status.message}' 2>/dev/null || true)"
+      echo "BSL phase=${phase:-unknown} msg=${msg:-}"
+      if [[ "${phase}" == "Available" ]]; then
+        exit 0
+      fi
+      sleep 5
+    done
+    echo "BackupStorageLocation still not Available after ~3m" >&2
+    kubectl -n velero describe backupstoragelocation default | tail -50 >&2 || true
+    kubectl -n velero get deploy velero -o yaml | grep -A30 'initContainers:' >&2 || true
+    exit 1
+  register: velero_bsl_wait
+  changed_when: false
+
+- name: Remove temporary Velero credential files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ velero_values_path }}"
+    - "{{ velero_creds_path }}"
+  changed_when: false
