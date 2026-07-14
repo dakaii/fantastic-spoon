@@ -162,7 +162,7 @@ took >1 minute and still failed.
 
 **Fix**  
 `argocd-prereqs.yml`: wait for API responsiveness, retries (PR #30). Still needs
-adequate VM size (§12).
+adequate VM size (§11).
 
 ---
 
@@ -236,7 +236,7 @@ stream error: stream ID 3; INTERNAL_ERROR; received from peer
 k3s API becoming unstable under memory/CPU pressure on **e2-micro**.
 
 **Fix**  
-Resize off e2-micro (§12); re-run bootstrap after API is healthy.
+Resize off e2-micro (§11); re-run bootstrap after API is healthy.
 
 ---
 
