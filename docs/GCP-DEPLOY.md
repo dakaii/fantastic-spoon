@@ -57,9 +57,11 @@ chmod +x scripts/gcp-*.sh scripts/phase*.sh
 ./scripts/gcp-deploy.sh apps    # Argo CD + Linkding
 
 # Phase 4 (witness; domain optional — see PHASE-4-RUNBOOK.md)
-cp shared-services-gcp/terraform.tfvars.example shared-services-gcp/terraform.tfvars
-# edit domain_name when ready; open primary :6443 for witness if needed
-./scripts/gcp-deploy.sh failover
+gh workflow run gcp-phase4.yml -R dakaii/fantastic-spoon
+# or locally: ./scripts/gcp-deploy.sh failover
+
+# VPN (after Phase 4 is fine — independent stack)
+gh workflow run gcp-vpn.yml -R dakaii/fantastic-spoon -f city=us
 ```
 
 Optional env vars to skip prompts:

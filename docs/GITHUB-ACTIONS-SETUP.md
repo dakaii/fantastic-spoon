@@ -12,6 +12,8 @@ Run deploy and destroy from GitHub’s cloud so you can close your laptop. Works
 |----------|-------------|
 | **GCP Bootstrap** | Ansible/k3s only — VMs already exist, need (re)bootstrap |
 | **GCP Phase 2** | Standby Terraform + bootstrap + Velero on primary (after Phase 1) |
+| **GCP Phase 4** | Witness + optional Cloud DNS (`shared-services-gcp`) |
+| **GCP VPN** | WireGuard gateway VM + client `.conf` artifact (single city) |
 | **GCP Deploy All** | Full stack: Terraform + bootstrap + Linkding apps |
 | **GCP Destroy** | Tear down all resources (`terraform destroy`) |
 | **Terraform Validate** | Automatic on PRs — no secrets |
@@ -105,6 +107,35 @@ This runs: `cloud-services-gcp` Terraform → bootstrap standby → configure Ve
 ```bash
 gh workflow run gcp-bootstrap.yml -f cluster=standby -R dakaii/fantastic-spoon
 ```
+
+### Phase 4 (failover witness + optional DNS) — no local login
+
+Requires **full** SA (`--full`) and **primary + standby Terraform state in GCS**
+(`./scripts/gcp-tfstate-sync.sh push` if you only applied locally before).
+
+```bash
+# Witness only (no domain):
+gh workflow run gcp-phase4.yml -R dakaii/fantastic-spoon
+
+# With Cloud DNS (after you own a domain):
+gh workflow run gcp-phase4.yml -R dakaii/fantastic-spoon \
+  -f domain_name=example.com -f app_subdomain=app
+
+gh run watch -R dakaii/fantastic-spoon
+```
+
+Then follow [PHASE-4-RUNBOOK.md](PHASE-4-RUNBOOK.md) for NS delegation and
+`./scripts/failover-gcp.sh` (app activation still manual / local kubeconfig).
+
+### VPN V1 (WireGuard city gateway) — no local login
+
+```bash
+gh workflow run gcp-vpn.yml -R dakaii/fantastic-spoon -f city=us
+gh run watch -R dakaii/fantastic-spoon
+```
+
+Download the **wireguard-client-us** artifact from the run, import the `.conf`
+into the official WireGuard app. See [VPN-RUNBOOK.md](VPN-RUNBOOK.md).
 
 ### Full deploy (greenfield or re-deploy)
 

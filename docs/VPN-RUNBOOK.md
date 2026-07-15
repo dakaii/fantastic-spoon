@@ -24,6 +24,16 @@ Destroying VPN never destroys k3s.
 
 ## V1 — Deploy one city (`us`)
 
+**GitHub Actions:**
+
+```bash
+gh workflow run gcp-vpn.yml -R dakaii/fantastic-spoon -f city=us
+gh run watch -R dakaii/fantastic-spoon
+# Download artifact wireguard-client-us → import .conf into WireGuard
+```
+
+**Local:**
+
 ```bash
 cd vpn-gateways-gcp
 cp terraform.tfvars.example terraform.tfvars

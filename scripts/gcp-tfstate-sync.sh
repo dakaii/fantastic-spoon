@@ -16,6 +16,7 @@ MODULES=(
   primary-cluster-gcp
   cloud-services-gcp
   shared-services-gcp
+  vpn-gateways-gcp
 )
 
 log() { echo "==> $*"; }
