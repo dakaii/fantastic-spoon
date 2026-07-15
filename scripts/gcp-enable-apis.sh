@@ -16,6 +16,11 @@ APIS=(
   iam.googleapis.com
   serviceusage.googleapis.com
   cloudresourcemanager.googleapis.com
+  # Cloud Functions Gen2 (Phase 4 witness)
+  run.googleapis.com
+  cloudbuild.googleapis.com
+  artifactregistry.googleapis.com
+  eventarc.googleapis.com
 )
 
 echo "==> Enabling APIs on project ${GCP_PROJECT}"

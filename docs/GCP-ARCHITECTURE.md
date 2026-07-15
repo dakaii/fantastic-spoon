@@ -213,9 +213,12 @@ chmod +x scripts/*.sh
 ./scripts/phase1-primary.sh    # or provision.sh + bootstrap-cluster.sh primary
 ./scripts/phase2-standby.sh  # standby + GCS
 
-# Phase 4 (after domain):
+# Phase 4 — witness without domain; DNS when domain_name is set:
+# - open primary API for witness: k3s_api_source_ranges = ["0.0.0.0/0"] (lab)
+# - ./scripts/gcp-deploy.sh failover
+# Details: PHASE-4-RUNBOOK.md
 cp shared-services-gcp/terraform.tfvars.example shared-services-gcp/terraform.tfvars
-cd shared-services-gcp && terraform apply
+./scripts/gcp-deploy.sh failover
 ```
 
-See also [GCP Compute provisioner](../provisioners/gcp-compute/README.md) and [AWS Architecture](AWS-ARCHITECTURE.md) for the alternative cloud path.
+See also [PHASE-4-RUNBOOK.md](PHASE-4-RUNBOOK.md), [GCP Compute provisioner](../provisioners/gcp-compute/README.md) and [AWS Architecture](AWS-ARCHITECTURE.md).

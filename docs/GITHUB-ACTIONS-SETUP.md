@@ -39,8 +39,9 @@ gh auth login
 # Bootstrap-only SA (Compute Viewer):
 GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-setup-github-actions.sh --push-secrets
 
-# Deploy + Destroy (Compute Admin, Storage Admin):
+# Deploy + Destroy + Phase 4 shared-services (Compute/Storage/DNS/Functions/...):
 GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-setup-github-actions.sh --full --push-secrets
+# --full now also grants serviceUsageAdmin + Phase 4 roles (DNS, Functions, Run, Workflows, …)
 ```
 
 | Secret | Required for |
