@@ -55,6 +55,11 @@ chmod +x scripts/gcp-*.sh scripts/phase*.sh
 ./scripts/gcp-deploy.sh init    # create local terraform.tfvars
 ./scripts/gcp-deploy.sh infra   # GCE primary + standby + GCS
 ./scripts/gcp-deploy.sh apps    # Argo CD + Linkding
+
+# Phase 4 (witness; domain optional — see PHASE-4-RUNBOOK.md)
+cp shared-services-gcp/terraform.tfvars.example shared-services-gcp/terraform.tfvars
+# edit domain_name when ready; open primary :6443 for witness if needed
+./scripts/gcp-deploy.sh failover
 ```
 
 Optional env vars to skip prompts:

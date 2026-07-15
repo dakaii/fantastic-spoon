@@ -10,6 +10,9 @@ project_name = "hybrid-k8s"
 ssh_public_key = "ssh-ed25519 AAAA... you@host"
 admin_cidr     = "203.0.113.10/32"
 
+# Phase 4 witness (Cloud Function) must reach :6443 — lab default open; tighten later
+# k3s_api_source_ranges = ["0.0.0.0/0"]
+
 control_plane_count          = 1
 worker_count                 = 2
 control_plane_machine_type   = "e2-medium"

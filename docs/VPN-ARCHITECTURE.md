@@ -119,7 +119,9 @@ Recommended default AllowedIPs for “platform + egress” demo:
 | `hk` | `asia-east2` | Second city (your example) |
 | `eu` | `europe-west1` | Third city (phase later) |
 
-Start with **us + one other**. Add more when the pattern is boring.
+Multi-city exits are **optional**. A single city proves the design; add another
+region only for latency/availability demos. Prefer finishing Phase 4 failover
+before expanding VPN.
 
 ---
 

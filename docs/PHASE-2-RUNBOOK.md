@@ -143,6 +143,7 @@ Or run `./scripts/gcp-deploy.sh apps` after updating the standby cluster secret.
 ## Next
 
 → Phase 3: GitOps app deployment (Linkding via `./scripts/gcp-deploy.sh apps`)
-→ Phase 4: Register domain + `shared-services-gcp/` for automated failover
+→ Phase 4: [PHASE-4-RUNBOOK.md](PHASE-4-RUNBOOK.md) — witness + Cloud DNS failover  
+→ Then optional: VPN V1 (`vpn-gateways-gcp/` — single city is enough)
 
 See [GCP-ARCHITECTURE.md](GCP-ARCHITECTURE.md) for the full failover design.

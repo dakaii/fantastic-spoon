@@ -200,6 +200,27 @@ configure_velero_on_primary() {
   "${REPO_ROOT}/scripts/configure-velero-primary.sh"
 }
 
+cmd_failover() {
+  require_prereqs
+  check_gcp_auth || {
+    log "GCP credentials not found — starting browser login"
+    cmd_auth
+  }
+  enable_gcp_apis
+
+  local shared_tfvars="${REPO_ROOT}/shared-services-gcp/terraform.tfvars"
+  [[ -f "$shared_tfvars" ]] || die "Missing ${shared_tfvars} — copy from terraform.tfvars.example (see docs/PHASE-4-RUNBOOK.md)"
+
+  log "Phase 4 — shared-services-gcp (witness + optional Cloud DNS)"
+  (
+    cd "${REPO_ROOT}/shared-services-gcp"
+    terraform init -input=false
+    terraform apply -auto-approve -input=false
+  )
+
+  log "Phase 4 apply complete — see docs/PHASE-4-RUNBOOK.md for NS, witness verify, and ./scripts/failover-gcp.sh"
+}
+
 setup_kubeconfig() {
   local inventory="${REPO_ROOT}/ansible/inventory/primary-hosts.yml"
   [[ -f "$inventory" ]] || die "Missing ${inventory} — run infra first"
@@ -290,19 +311,21 @@ usage() {
 Usage: $(basename "$0") [command]
 
 Commands:
-  auth    Sign in to GCP via browser (no secrets in git)
-  init    Create local terraform.tfvars + clusters.yaml (gitignored)
-  infra   Deploy primary + standby clusters (Terraform + Ansible)
-  apps    Deploy Linkding and other apps via Argo CD
-  all     auth + init + infra + apps (default)
+  auth      Sign in to GCP via browser (no secrets in git)
+  init      Create local terraform.tfvars + clusters.yaml (gitignored)
+  infra     Deploy primary + standby clusters (Terraform + Ansible)
+  apps      Deploy Linkding and other apps via Argo CD
+  failover  Apply shared-services-gcp (Phase 4 witness + optional DNS)
+  all       auth + init + infra + apps (default; does not include failover)
 
 Examples:
   ./scripts/gcp-deploy.sh
   GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-deploy.sh init
   ./scripts/gcp-deploy.sh infra
+  ./scripts/gcp-deploy.sh failover
   SKIP_AUTH=1 ./scripts/gcp-deploy.sh all
 
-See docs/GCP-DEPLOY.md for GitHub Actions vs local deploy.
+See docs/GCP-DEPLOY.md and docs/PHASE-4-RUNBOOK.md.
 EOF
 }
 
@@ -315,6 +338,7 @@ main() {
     init)  cmd_init ;;
     infra) cmd_infra ;;
     apps)  cmd_apps ;;
+    failover|phase4) cmd_failover ;;
     all)   cmd_all ;;
     -h|--help|help) usage ;;
     *) die "Unknown command: ${cmd}. Run with --help" ;;

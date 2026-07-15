@@ -62,3 +62,9 @@ variable "admin_cidr" {
   description = "Your public IP as CIDR — run: curl -s ifconfig.me"
   type        = string
 }
+
+variable "k3s_api_source_ranges" {
+  description = "CIDRs allowed to reach k3s API :6443. Empty = admin_cidr only. For Phase 4 Cloud Function witness (public egress), set [\"0.0.0.0/0\"] in lab or restrict to known ranges."
+  type        = list(string)
+  default     = []
+}

@@ -117,6 +117,19 @@ if [[ "$FULL_ROLES" -eq 1 ]]; then
   bind_role "roles/compute.admin"
   bind_role "roles/storage.admin"
   bind_role "roles/iam.serviceAccountUser"
+  # Required for terraform/gcloud to enable APIs (gcp-phase2 / shared-services apply)
+  bind_role "roles/serviceusage.serviceUsageAdmin"
+  # Phase 4 shared-services-gcp (witness + DNS)
+  bind_role "roles/dns.admin"
+  bind_role "roles/cloudfunctions.admin"
+  bind_role "roles/run.admin"
+  bind_role "roles/cloudscheduler.admin"
+  bind_role "roles/workflows.admin"
+  bind_role "roles/pubsub.admin"
+  bind_role "roles/datastore.owner"
+  bind_role "roles/cloudbuild.builds.editor"
+  bind_role "roles/artifactregistry.admin"
+  bind_role "roles/iam.serviceAccountAdmin"
 fi
 
 mkdir -p "$KEY_DIR"

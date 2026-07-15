@@ -59,10 +59,9 @@ resource "google_compute_health_check" "primary_ingress" {
   name               = "${var.project_name}-primary-ingress-hc"
   check_interval_sec = 30
   timeout_sec        = 5
-
-  https_health_check {
-    port         = 443
-    request_path = "/"
+  # TCP — LB forwards to Traefik HTTPS NodePort; HTTPS path checks fail on self-signed certs.
+  tcp_health_check {
+    port = 443
   }
 }
 
@@ -150,6 +149,11 @@ data "archive_file" "witness" {
   type        = "zip"
   source_dir  = "${path.module}/cloud_function"
   output_path = "${path.module}/cloud_function/witness.zip"
+  excludes = [
+    "witness.zip",
+    "__pycache__",
+    "*.pyc",
+  ]
 }
 
 resource "google_storage_bucket" "witness_source" {
@@ -222,6 +226,17 @@ resource "google_cloudfunctions2_function_iam_member" "witness_invoker" {
   member         = "serviceAccount:${google_service_account.witness[0].email}"
 }
 
+# Gen2 functions are Cloud Run services — Scheduler OIDC needs run.invoker as well.
+resource "google_cloud_run_service_iam_member" "witness_run_invoker" {
+  count = var.enable_witness ? 1 : 0
+
+  project  = google_cloudfunctions2_function.witness[0].project
+  location = google_cloudfunctions2_function.witness[0].location
+  service  = google_cloudfunctions2_function.witness[0].name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.witness[0].email}"
+}
+
 resource "google_cloud_scheduler_job" "witness" {
   count = var.enable_witness ? 1 : 0
 
@@ -236,6 +251,7 @@ resource "google_cloud_scheduler_job" "witness" {
 
     oidc_token {
       service_account_email = google_service_account.witness[0].email
+      audience              = google_cloudfunctions2_function.witness[0].service_config[0].uri
     }
   }
 }
