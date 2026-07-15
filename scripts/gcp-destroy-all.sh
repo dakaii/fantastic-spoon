@@ -42,6 +42,7 @@ gcloud config set project "$GCP_PROJECT"
 "${REPO_ROOT}/scripts/gcp-tfstate-sync.sh" pull
 
 # Reverse apply order
+tf_destroy vpn-gateways-gcp
 tf_destroy shared-services-gcp
 tf_destroy cloud-services-gcp
 tf_destroy primary-cluster-gcp

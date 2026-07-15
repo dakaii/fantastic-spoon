@@ -1,0 +1,70 @@
+# Phase 4: Cloud Function witness + optional Cloud DNS failover
+# Requires primary + standby state in GCS (Deploy All / Phase 2 / local tfstate push).
+# See docs/GITHUB-ACTIONS-SETUP.md and docs/PHASE-4-RUNBOOK.md
+
+name: GCP Phase 4
+
+on:
+  workflow_dispatch:
+    inputs:
+      domain_name:
+        description: Domain for Cloud DNS (leave empty for witness-only)
+        required: false
+        default: ""
+        type: string
+      app_subdomain:
+        description: App subdomain (e.g. app → app.example.com)
+        required: false
+        default: "app"
+        type: string
+      create_firestore:
+        description: Create Firestore database if missing
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  phase4:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check required secrets
+        env:
+          GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+          SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
+          ADMIN_CIDR: ${{ secrets.ADMIN_CIDR }}
+        run: |
+          missing=0
+          [[ -n "$GCP_PROJECT" ]] || { echo "::error::Missing secret GCP_PROJECT"; missing=1; }
+          [[ -n "$GCP_SA_KEY" ]] || { echo "::error::Missing secret GCP_SA_KEY"; missing=1; }
+          [[ -n "$SSH_PUBLIC_KEY" ]] || { echo "::error::Missing secret SSH_PUBLIC_KEY"; missing=1; }
+          [[ -n "$ADMIN_CIDR" ]] || { echo "::error::Missing secret ADMIN_CIDR (use 0.0.0.0/0 for GitHub runners)"; missing=1; }
+          if [[ $missing -ne 0 ]]; then
+            echo "See docs/GITHUB-ACTIONS-SETUP.md — Phase 4 needs --full SA (serviceUsageAdmin + DNS/Functions/Run/...)"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.5"
+
+      - name: Phase 4 (shared-services-gcp)
+        env:
+          GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
+          SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
+          ADMIN_CIDR: ${{ secrets.ADMIN_CIDR }}
+          DOMAIN_NAME: ${{ inputs.domain_name }}
+          APP_SUBDOMAIN: ${{ inputs.app_subdomain }}
+          CREATE_FIRESTORE_DATABASE: ${{ inputs.create_firestore == true && 'true' || 'false' }}
+        run: |
+          chmod +x scripts/*.sh
+          ./scripts/gcp-phase4-ci.sh

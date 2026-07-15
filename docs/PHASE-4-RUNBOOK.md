@@ -144,12 +144,21 @@ There is **no** automated failback Workflow yet — reverse DNS/apps manually wh
 
 ## Step 6 — Deploy entrypoints
 
-```bash
-# After APIs + tfvars ready:
-./scripts/gcp-deploy.sh failover
+**GitHub Actions (preferred if secrets already set):**
 
-# Or GHA / CI: apply shared-services-gcp with a deploy SA that has
-# serviceUsageAdmin + Phase 4 roles (see scripts/gcp-setup-github-actions.sh --full)
+```bash
+# State must be in GCS first if you only ever applied locally:
+# GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-tfstate-sync.sh push
+
+gh workflow run gcp-phase4.yml -R dakaii/fantastic-spoon
+# optional: -f domain_name=example.com -f app_subdomain=app
+gh run watch -R dakaii/fantastic-spoon
+```
+
+**Local:**
+
+```bash
+./scripts/gcp-deploy.sh failover
 ```
 
 `scripts/failover.sh` remains the **Cloudflare / portable** path — not Cloud DNS.
