@@ -60,8 +60,10 @@ chmod +x scripts/gcp-*.sh scripts/phase*.sh
 gh workflow run gcp-phase4.yml -R dakaii/fantastic-spoon
 # or locally: ./scripts/gcp-deploy.sh failover
 
-# VPN (after Phase 4 is fine — independent stack)
+# VPN (additive — independent of primary/standby)
 gh workflow run gcp-vpn.yml -R dakaii/fantastic-spoon -f city=us
+gh workflow run gcp-vpn-destroy.yml -R dakaii/fantastic-spoon   # VPN only
+# Connect locally: ./scripts/vpn.sh up && ./scripts/vpn.sh ip
 ```
 
 Optional env vars to skip prompts:

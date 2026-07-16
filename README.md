@@ -67,6 +67,7 @@ shared-services/                  ← AWS failover layer
 scripts/provision.sh              ← Layer 1 entry point
 scripts/bootstrap-cluster.sh      ← Layer 2 entry point
 scripts/vpn-bootstrap.sh          ← WireGuard city bootstrap (additive)
+scripts/vpn.sh                    ← CLI connect/disconnect (up/down/ip)
 ```
 
 ## Documentation

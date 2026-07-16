@@ -26,12 +26,22 @@ Destroying VPN never destroys k3s.
 
 ## V1 — Deploy one city (`us`)
 
-**GitHub Actions:**
+**GitHub Actions (recommended):**
 
 ```bash
+# Deploy gateway + WireGuard + laptop client config (artifact)
 gh workflow run gcp-vpn.yml -R dakaii/fantastic-spoon -f city=us
 gh run watch -R dakaii/fantastic-spoon
-# Download artifact wireguard-client-us → import .conf into WireGuard
+# Download artifact wireguard-client-us → copy *.conf to vpn-clients/us/
+
+# Connect from Mac (CLI, no GUI app)
+./scripts/vpn.sh up us laptop
+./scripts/vpn.sh ip          # expect gateway public IP
+./scripts/vpn.sh down
+
+# Destroy VPN only (primary/standby untouched)
+gh workflow run gcp-vpn-destroy.yml -R dakaii/fantastic-spoon
+gh run watch -R dakaii/fantastic-spoon
 ```
 
 **Local:**
@@ -111,10 +121,21 @@ Without `--apply`, keys/configs are local only until you apply.
 
 ## Tear down
 
+**GitHub Actions:**
+
 ```bash
-terraform -chdir=vpn-gateways-gcp destroy
+gh workflow run gcp-vpn-destroy.yml -R dakaii/fantastic-spoon
+```
+
+**Local:**
+
+```bash
+GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-vpn-destroy-ci.sh
+./scripts/vpn.sh down us laptop
 rm -rf vpn-clients/us   # optional — destroys local keys
 ```
+
+Full project teardown (includes VPN): `gh workflow run gcp-destroy.yml`
 
 ## Second city (Phase V2 sketch)
 
