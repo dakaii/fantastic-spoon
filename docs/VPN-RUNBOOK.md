@@ -130,7 +130,9 @@ Do not merge into primary Terraform.
 | No internet via tunnel | `ip_forward`, NAT PostUp iface, `sudo wg show` |
 | SSH timeout | `admin_cidr` stale (same lesson as k3s bootstrap) |
 | Ansible unreachable | `terraform output vpn_public_ip`; refresh inventory via bootstrap |
+| `set: Illegal option -o pipefail` | Fixed: uplink detect uses bash; `git pull` and re-run apply |
 | Prometheus `VPNGatewayDown` | `vpn_metrics_cidrs` includes scraper IP; exporters `systemctl status` |
+| Tunnel up but no internet | Instance needs `can_ip_forward=true` (terraform) + NAT PostUp iface |
 
 ## Security notes
 

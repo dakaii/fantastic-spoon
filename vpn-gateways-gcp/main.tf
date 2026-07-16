@@ -100,6 +100,9 @@ resource "google_compute_instance" "vpn" {
   machine_type = var.machine_type
   zone         = var.gcp_zone
 
+  # Required for WireGuard NAT egress (consumer VPN full-tunnel)
+  can_ip_forward = true
+
   tags = ["${var.project_name}-vpn", "vpn-gateway"]
 
   boot_disk {

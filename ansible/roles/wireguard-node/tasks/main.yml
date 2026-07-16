@@ -23,11 +23,12 @@
     reload: true
 
 - name: Detect primary uplink interface
-  ansible.builtin.shell: |
-    set -euo pipefail
-    ip -4 route show default | awk '{print $5; exit}'
+  ansible.builtin.shell: ip -4 route show default | awk '{print $5; exit}'
+  args:
+    executable: /bin/bash
   register: wg_uplink
   changed_when: false
+  failed_when: wg_uplink.rc != 0 or wg_uplink.stdout | trim | length == 0
 
 - name: Fail if WireGuard keys / peers were not provided
   ansible.builtin.assert:
