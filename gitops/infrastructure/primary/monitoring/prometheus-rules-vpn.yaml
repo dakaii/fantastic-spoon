@@ -1,0 +1,55 @@
+# VPN gateway alerts — scraped via node_exporter on vpn-gateways-gcp VMs.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: hybrid-k8s-vpn
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+    app.kubernetes.io/part-of: hybrid-k8s-platform
+    app.kubernetes.io/component: vpn
+spec:
+  groups:
+    - name: hybrid-k8s.vpn
+      interval: 60s
+      rules:
+        - alert: VPNGatewayDown
+          expr: |
+            up{job="vpn-gateway"} == 0
+          for: 5m
+          labels:
+            severity: critical
+            component: vpn
+          annotations:
+            summary: "VPN gateway scrape target is down"
+            description: >-
+              Prometheus cannot scrape job=vpn-gateway (instance {{ $labels.instance }}).
+              Check firewall vpn_metrics_cidrs, node_exporter, and the GCE VM.
+            runbook_url: "https://github.com/dakaii/fantastic-spoon/blob/main/docs/VPN-RUNBOOK.md"
+
+        - alert: WireGuardInterfaceDown
+          expr: |
+            wireguard_interface_up{job="vpn-gateway"} == 0
+          for: 3m
+          labels:
+            severity: critical
+            component: vpn
+          annotations:
+            summary: "WireGuard interface down on VPN gateway"
+            description: >-
+              wireguard_interface_up is 0 for {{ $labels.instance }}.
+              Check wg-quick@wg0 on the gateway.
+
+        - alert: WireGuardPeerHandshakeStale
+          expr: |
+            (time() - wireguard_peer_last_handshake_seconds{job="vpn-gateway"}) > 900
+              and wireguard_peer_last_handshake_seconds{job="vpn-gateway"} > 0
+          for: 10m
+          labels:
+            severity: warning
+            component: vpn
+          annotations:
+            summary: "WireGuard peer handshake stale (>15m)"
+            description: >-
+              Peer {{ $labels.public_key }} on {{ $labels.instance }} has not
+              completed a handshake in over 15 minutes (client offline or broken path).

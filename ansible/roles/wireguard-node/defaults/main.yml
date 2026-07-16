@@ -4,3 +4,8 @@ wg_server_address: "10.66.0.1/24"
 wg_client_address: "10.66.0.2/32"
 wg_client_name: laptop
 wireguard_port: 51820
+
+# Prometheus exporters (consumer VPN monitoring via node_exporter textfile)
+vpn_metrics_enabled: true
+node_exporter_version: "1.8.2"
+node_exporter_port: 9100

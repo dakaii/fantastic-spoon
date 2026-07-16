@@ -1,9 +1,24 @@
 # Multi-Region WireGuard VPN Gateways — Design Doc
 
-**Status:** V1 implemented (additive host WireGuard)  
-**Goal:** Highly available, multi-city (multi-region) WireGuard exits you can use day-to-day, deployed beside the existing portable k3s platform — **without** building a consumer VPN product or a custom client app.
+**Status:** V1 implemented (additive host WireGuard, **full-tunnel consumer exit**)  
+**Goal:** Highly available, multi-city WireGuard **consumer VPN** exits (stock clients),
+deployed beside the portable k3s platform and monitored with existing Prometheus/Grafana.
+No custom VPN app or billing in V1–V2.
 
-See [VPN-RUNBOOK.md](VPN-RUNBOOK.md) to deploy the first city.
+**Product overview:** [CONSUMER-VPN.md](CONSUMER-VPN.md)  
+**Operate:** [VPN-RUNBOOK.md](VPN-RUNBOOK.md)
+
+---
+
+## Product vs platform (read this first)
+
+| Plane | Role |
+|-------|------|
+| **Consumer VPN** | Full-tunnel WireGuard → gateway NAT → internet (end-user browsing) |
+| **k3s + Traefik** | Operate/monitor the platform (Argo, Grafana, apps). **Not** on the browse path |
+
+End users do **not** go through Traefik to visit random websites. You still keep
+Traefik to manage the control/ops plane. Details: [CONSUMER-VPN.md](CONSUMER-VPN.md).
 
 ---
 
@@ -13,16 +28,16 @@ See [VPN-RUNBOOK.md](VPN-RUNBOOK.md) to deploy the first city.
 
 | Question | Honest answer |
 |----------|---------------|
-| Is this a good showcase? | **Yes, as a networking + HA platform feature** — not as “I built Norton.” |
-| Do lots of people build this for jobs? | **Lots build “K8s on a cloud.”** Fewer show **self-managed multi-region egress + failover + GitOps** on top of a portable platform. Differentiation comes from **depth + demos + runbooks**, not uniqueness of the idea alone. |
-| What do employers hire for? | Terraform, K8s networking, Traefik/ingress, GitOps, incident/failover thinking, security boundaries. Stock WireGuard clients are fine. |
-| What not to do | Custom mobile/desktop VPN app; billing; user accounts; “bypass geo-blocks” framing. |
+| Is this a good showcase? | **Yes** — consumer VPN data plane **plus** portable k3s ops/monitoring is stronger than “K8s only” or “WG script only.” |
+| Do lots of people build this for jobs? | Lots build “K8s on a cloud.” Fewer show **self-managed multi-region egress + GitOps + Prometheus on the exit path**. |
+| What do employers hire for? | Terraform, networking, Traefik/ingress, GitOps, observability, security boundaries. Stock WireGuard clients are fine. |
+| What not to do (yet) | Custom mobile app; billing; “bypass geo-blocks” framing; ripping out Traefik. |
 
-This project is **additive** to fantastic-spoon. It does not replace primary/standby, Traefik, Argo CD, or Velero — it rides on them.
+This project is **additive** to fantastic-spoon. It does not replace primary/standby, Traefik, Argo CD, or Velero — the VPN rides beside them; monitoring scrapes into the existing stack.
 
 ### Product framing (resume one-liner)
 
-> Extended a portable multi-cluster k3s platform with multi-region WireGuard gateways, regional exit selection, and automated peer failover — managed via Terraform + GitOps, used with stock WireGuard clients.
+> Built a full-tunnel multi-city WireGuard consumer VPN beside a portable k3s platform — Terraform/Ansible gateways, stock clients, Prometheus/Grafana for peer and host health.
 
 ---
 
@@ -39,19 +54,23 @@ Layer 1  provisioners/             GCE nodes     ← ADD: labeled VPN gateway no
 | Existing capability | VPN uses it for |
 |---------------------|-----------------|
 | Primary + standby k3s | Control plane / GitOps home; optional secondary exit later |
-| Traefik | VPN-*only* IngressRoutes for Grafana / Argo / admin UIs |
+| Traefik | Ops plane HTTP routing (apps/admin). Optional later: VPN-only IngressRoutes. **Not** used for consumer internet egress. |
 | Cilium / NetworkPolicy | Lock gateway namespace; restrict who can talk to WG |
 | Argo CD | Deploy & sync gateway chart; multi-cluster if desired |
 | Velero | Backup WG ConfigMaps/Secrets (keys: careful — prefer sealed/external) |
 | Terraform (primary / cloud-services) | Extra instances or instance groups tagged `role=vpn-gateway` |
 | Phase 4 DNS failover | Orthogonal: public app failover ≠ VPN peer failover |
 
-**Non-goals for v1**
+**Non-goals for v1–v2**
 
-- Consumer VPN SaaS (TunnelBear / Norton clone)
-- Custom WireGuard GUI/mobile client
-- Full-mesh laptop↔all-cities crypto beyond selecting one exit peer
+- Custom WireGuard GUI/mobile client / App Store
+- Billing, multi-tenant SaaS accounts
 - Replacing Cloudflare/Tailscale for company SSO
+- Using Traefik as a forward proxy for arbitrary websites
+
+**Goals for consumer product (incremental)**
+
+- Full-tunnel exit as default; multi-city profiles; scrape metrics into platform Prometheus
 
 ---
 
@@ -89,16 +108,13 @@ HA within a city = multiple endpoints / DNS round-robin / documented failover pe
 
 ### 3.3 Traffic modes
 
-| Mode | Behavior | v1 |
-|------|----------|----|
-| **Split tunnel** | Only selected CIDRs / domains via WG | **Default** (safer, less breakage) |
-| **Full tunnel** | `0.0.0.0/0`, `::/0` via WG | Optional profile |
-| **Private platform only** | Reach Traefik/Argo/Grafana; no internet SNAT | Good interview demo |
+| Mode | Behavior | Product default |
+|------|----------|-----------------|
+| **Full tunnel** | `0.0.0.0/0`, `::/0` via WG + SNAT | **Yes (V1)** — consumer VPN |
+| **Split tunnel** | Only selected CIDRs via WG | Optional (`WG_FULL_TUNNEL=0`) |
+| **Private platform only** | Reach Traefik/Argo/Grafana; no internet browse | Optional interview demo |
 
-Recommended default AllowedIPs for “platform + egress” demo:
-
-- Cluster pod/service CIDRs (k3s defaults / as configured)
-- Optional: `0.0.0.0/0` on a separate “full exit” profile so you can show Norton-like city egress without breaking local LAN always.
+Client generator defaults to full tunnel (`WG_FULL_TUNNEL=1`).
 
 ### 3.4 Data-plane choices (lock for v1)
 
@@ -217,11 +233,15 @@ This ties VPN → Traefik → existing stack (strong interview link).
 
 ### 4.5 Observability
 
-Reuse kube-prometheus:
+Reuse kube-prometheus on **primary** (gateways are outside the cluster):
 
-- Node / pod metrics for gateway Deployments
-- Blackbox or custom check: `wg show` peer handshakes via exporter or CronJob → Prometheus textfile
-- Alert: `WireGuardPeerHandshakeStale` (no handshake > 5m while expected)
+- Ansible installs `node_exporter` + WireGuard textfile metrics on the gateway VM
+- Terraform firewall: `:9100` → `vpn_metrics_cidrs` / `admin_cidr`
+- Scrape snippet: `./scripts/vpn-prometheus-scrape-snippet.sh`
+- GitOps alerts/dashboard: `prometheus-rules-vpn.yaml`, `grafana-dashboard-vpn-configmap.yaml`
+- Alerts: `WireGuardPeerHandshakeStale`, `VPNGatewayDown`, `WireGuardInterfaceDown`
+
+See [CONSUMER-VPN.md](CONSUMER-VPN.md) §5 and [MONITORING.md](MONITORING.md#consumer-vpn-gateway).
 
 ### 4.6 HA semantics
 
@@ -259,16 +279,17 @@ Reuse kube-prometheus:
 
 ### Phase V1 — Single city MVP (us-central1)
 
-**Outcome:** One WG exit; laptop reaches internet via tunnel.
+**Outcome:** One **consumer** WG exit; laptop reaches internet via full tunnel; metrics exporters on gateway.
 
 1. [x] Terraform: `vpn-gateways-gcp/` — 1× `e2-small`, firewall UDP/51820  
-2. [x] Ansible: `playbooks/vpn-gateway.yml` + `roles/wireguard-node`  
+2. [x] Ansible: `playbooks/vpn-gateway.yml` + `roles/wireguard-node` (NAT + exporters)  
 3. [x] Host WireGuard (in-cluster Helm deferred — see `charts/wireguard-gateway/`)  
-4. [x] Client config: `scripts/generate-wg-client-config.sh` + `vpn-bootstrap.sh`  
+4. [x] Client config: `scripts/generate-wg-client-config.sh` + `vpn-bootstrap.sh` (full tunnel default)  
 5. [ ] Verify: `curl ifconfig.me` shows GCE egress IP when full tunnel  
-6. [x] `docs/VPN-RUNBOOK.md`
+6. [x] `docs/VPN-RUNBOOK.md` + `docs/CONSUMER-VPN.md`  
+7. [x] Prometheus scrape snippet + VPN alert rules / Grafana dashboard manifests
 
-**Exit criteria:** Stable handshake; deliberate disconnect/reconnect works; keys not in git.
+**Exit criteria:** Stable handshake; full-tunnel egress IP correct; keys not in git; exporters listening.
 
 ### Phase V2 — Second city
 
@@ -352,6 +373,8 @@ Do **not** block on Phase 4 shared-services DNS. Do **not** start a client app.
 | 2026-07-14 | WireGuard + stock clients; multi-region exits | No custom app |
 | 2026-07-14 | Additive to fantastic-spoon | Not a greenfield rewrite |
 | 2026-07-14 | Dedicated VM (host WG), not k3s agent | Avoids inventory/ApplicationSet coupling |
+| 2026-07-16 | Product = consumer full-tunnel VPN | Traefik stays for ops plane only |
+| 2026-07-16 | Monitor via node_exporter + WG textfile → primary Prometheus | Additive; separate VPC |
 | TBD | First second city region | Suggest asia-east2 (`city=hk`) |
 ---
 

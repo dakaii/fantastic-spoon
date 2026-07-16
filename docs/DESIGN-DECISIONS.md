@@ -262,7 +262,8 @@ Witness detects failure
 | Local provisioning | QEMU/libvirt + cloud-init + Ansible |
 | Kubernetes | k3s (local + standby) |
 | GitOps | Argo CD on local primary |
-| Ingress | Traefik |
+| Ingress | Traefik (ops/apps — not consumer VPN egress) |
+| Consumer VPN | WireGuard full-tunnel city exits (`vpn-gateways-gcp/`) |
 | Storage | Longhorn (local), cloud object storage (backups) |
 | CNI | Cilium |
 | Backup | Velero → cloud object storage |

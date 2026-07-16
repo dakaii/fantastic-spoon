@@ -1,0 +1,113 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hybrid-k8s-grafana-dashboard-vpn
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+    release: kube-prometheus-stack
+    app.kubernetes.io/part-of: hybrid-k8s-platform
+    app.kubernetes.io/component: vpn
+  annotations:
+    grafana_folder: "Hybrid K8s Platform"
+data:
+  consumer-vpn-gateway.json: |
+    {
+      "annotations": { "list": [] },
+      "editable": true,
+      "graphTooltip": 1,
+      "links": [],
+      "panels": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "mappings": [
+                { "options": { "0": { "color": "red", "text": "DOWN" }, "1": { "color": "green", "text": "UP" } }, "type": "value" }
+              ],
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+            }
+          },
+          "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+          "id": 1,
+          "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+          "title": "VPN Gateway Up",
+          "type": "stat",
+          "targets": [{ "expr": "up{job=\"vpn-gateway\"}", "legendFormat": "up" }]
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "mappings": [
+                { "options": { "0": { "color": "red", "text": "DOWN" }, "1": { "color": "green", "text": "UP" } }, "type": "value" }
+              ],
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+            }
+          },
+          "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+          "id": 2,
+          "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+          "title": "WireGuard Interface",
+          "type": "stat",
+          "targets": [{ "expr": "wireguard_interface_up{job=\"vpn-gateway\"}", "legendFormat": "{{ interface }}" }]
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+              "unit": "s"
+            }
+          },
+          "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+          "id": 3,
+          "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+          "title": "Seconds Since Handshake",
+          "type": "stat",
+          "targets": [{ "expr": "time() - wireguard_peer_last_handshake_seconds{job=\"vpn-gateway\"}", "legendFormat": "age" }]
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "unit": "Bps"
+            }
+          },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+          "id": 4,
+          "title": "Peer Traffic (RX/TX rate)",
+          "type": "timeseries",
+          "targets": [
+            { "expr": "rate(wireguard_peer_receive_bytes_total{job=\"vpn-gateway\"}[5m])", "legendFormat": "rx {{ public_key }}" },
+            { "expr": "rate(wireguard_peer_transmit_bytes_total{job=\"vpn-gateway\"}[5m])", "legendFormat": "tx {{ public_key }}" }
+          ]
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "unit": "percent"
+            }
+          },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+          "id": 5,
+          "title": "Gateway CPU %",
+          "type": "timeseries",
+          "targets": [
+            { "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{job=\"vpn-gateway\",mode=\"idle\"}[5m])) * 100)", "legendFormat": "{{ instance }}" }
+          ]
+        }
+      ],
+      "schemaVersion": 39,
+      "tags": ["vpn", "wireguard", "hybrid-k8s"],
+      "time": { "from": "now-1h", "to": "now" },
+      "title": "Consumer VPN Gateway",
+      "uid": "hybrid-k8s-vpn",
+      "version": 1
+    }

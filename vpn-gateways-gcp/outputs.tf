@@ -19,6 +19,15 @@ output "wireguard_port" {
   value = var.wireguard_port
 }
 
+output "node_exporter_port" {
+  value = var.node_exporter_port
+}
+
+output "vpn_metrics_url" {
+  description = "Prometheus scrape target for the VPN gateway"
+  value       = "${google_compute_instance.vpn.network_interface[0].access_config[0].nat_ip}:${var.node_exporter_port}"
+}
+
 output "vpn_vpc_name" {
   value = google_compute_network.vpn.name
 }

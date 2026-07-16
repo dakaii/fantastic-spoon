@@ -8,8 +8,12 @@ Observability for the hybrid k8s platform: cluster health, DR readiness, and Git
 |------|---------|
 | `prometheus-rules-cluster-health.yaml` | Node/API/workload/storage alerts |
 | `prometheus-rules-platform.yaml` | Velero, Argo CD, Traefik alerts |
+| `prometheus-rules-vpn.yaml` | Consumer VPN gateway / WireGuard peer alerts |
 | `grafana-dashboard-configmap.yaml` | "Hybrid K8s Platform Overview" dashboard |
+| `grafana-dashboard-vpn-configmap.yaml` | "Consumer VPN Gateway" dashboard |
+| `helm-values-vpn-scrape.example.yaml` | Scrape fragment (prefer `vpn-prometheus-scrape-snippet.sh`) |
 | `helm-values-alertmanager.example.yaml` | Alertmanager Slack/email config template |
+
 
 ## Prerequisites
 
@@ -47,6 +51,8 @@ Open http://localhost:3000 → Dashboards → **Hybrid K8s Platform Overview**
 | `VeleroBackupFailed` | critical | DR backups broken |
 | `VeleroNoRecentBackup` | warning | No backup in 6+ hours |
 | `TraefikDown` | critical | No ingress — traffic can't flow |
+| `VPNGatewayDown` | critical | Consumer VPN exit unreachable |
+| `WireGuardPeerHandshakeStale` | warning | Client offline or tunnel broken |
 | `ArgoCDAppUnhealthy` | warning | GitOps drift |
 
 ## Configure Alertmanager notifications
