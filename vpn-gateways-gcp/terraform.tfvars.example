@@ -1,7 +1,11 @@
 # Copy to terraform.tfvars:
-# cp terraform.tfvars.example terraform.tfvars
+#   cp terraform.tfvars.example terraform.tfvars
 #
-# Reuse the same gcp_project / ssh_public_key / admin_cidr as primary-cluster-gcp.
+# Reuse gcp_project / ssh_public_key / admin_cidr from primary — but do NOT copy
+# primary-cluster-gcp/terraform.tfvars wholesale (extra vars cause warnings).
+# Prefer: GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-deploy.sh init
+#   which writes a clean vpn-gateways-gcp/terraform.tfvars
+#
 # This stack is isolated (own VPC + state) and does not modify primary/standby.
 
 gcp_project = "your-gcp-project-id"
