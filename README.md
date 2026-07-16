@@ -16,15 +16,21 @@ Layer 1  provisioners/          gcp-compute | aws-ec2 | libvirt | on-prem  ← s
 ## Quick Start (GCP — default)
 
 ```bash
-gcloud auth application-default login   # once per machine
+gcloud auth application-default login   # once per machine (Terraform uses ADC)
 ./setup.sh                            # everything else
 ```
 
-Tear down when idle: `./setup.sh destroy`
+Tear down when idle (stops most billing):
+
+```bash
+GCP_PROJECT=hybrid-k8s-dev ./setup.sh destroy
+# same as: GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-teardown.sh
+# or GHA:  GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-teardown.sh --gha --watch
+```
 
 Optional: `GCP_PROJECT=hybrid-k8s-dev ./setup.sh`
 
-Details: [docs/GCP-DEPLOY.md](docs/GCP-DEPLOY.md)
+Details: [docs/GCP-DEPLOY.md](docs/GCP-DEPLOY.md) · GitHub Actions: [docs/GITHUB-ACTIONS-SETUP.md](docs/GITHUB-ACTIONS-SETUP.md)
 
 ## Quick Start (On-Prem Primary)
 
@@ -69,6 +75,7 @@ scripts/bootstrap-cluster.sh      ← Layer 2 entry point
 scripts/vpn-bootstrap.sh          ← WireGuard city bootstrap (additive)
 scripts/vpn.sh                    ← CLI connect/disconnect (up/down/ip)
 scripts/gcp-teardown.sh           ← stop-billing teardown (local or --gha)
+scripts/gcp-destroy-verify.sh     ← pre/post VM checks for destroy
 ```
 
 ## Documentation
