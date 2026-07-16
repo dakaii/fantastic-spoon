@@ -6,7 +6,9 @@ namespace: monitoring
 resources:
   - prometheus-rules-cluster-health.yaml
   - prometheus-rules-platform.yaml
+  - prometheus-rules-vpn.yaml
   - grafana-dashboard-configmap.yaml
+  - grafana-dashboard-vpn-configmap.yaml
 
 commonLabels:
   app.kubernetes.io/part-of: hybrid-k8s-platform

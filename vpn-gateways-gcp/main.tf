@@ -20,7 +20,8 @@ data "google_compute_image" "ubuntu" {
 }
 
 locals {
-  vpn_client_cidrs = length(var.vpn_client_cidrs) > 0 ? var.vpn_client_cidrs : [var.admin_cidr]
+  vpn_client_cidrs  = length(var.vpn_client_cidrs) > 0 ? var.vpn_client_cidrs : [var.admin_cidr]
+  vpn_metrics_cidrs = length(var.vpn_metrics_cidrs) > 0 ? var.vpn_metrics_cidrs : [var.admin_cidr]
 }
 
 # Dedicated VPC — not peered with primary/standby. Additive and safe to destroy alone.
@@ -74,6 +75,20 @@ resource "google_compute_firewall" "vpn_icmp" {
   target_tags   = ["vpn-gateway"]
 }
 
+# node_exporter (:9100) — scrape from admin / primary Prometheus egress only
+resource "google_compute_firewall" "vpn_metrics" {
+  name    = "${var.project_name}-vpn-allow-metrics"
+  network = google_compute_network.vpn.name
+
+  allow {
+    protocol = "tcp"
+    ports    = [tostring(var.node_exporter_port)]
+  }
+
+  source_ranges = local.vpn_metrics_cidrs
+  target_tags   = ["vpn-gateway"]
+}
+
 resource "google_compute_address" "vpn" {
   count  = var.reserve_static_ip ? 1 : 0
   name   = "${var.project_name}-vpn-${var.city}-ip"
@@ -103,7 +118,7 @@ resource "google_compute_instance" "vpn" {
   }
 
   metadata = {
-    ssh-keys  = "ubuntu:${var.ssh_public_key}"
+    ssh-keys = "ubuntu:${var.ssh_public_key}"
     user-data = templatefile("${path.module}/cloud-init/vpn-gateway.yaml.tftpl", {
       hostname = "${var.project_name}-vpn-${var.city}"
       city     = var.city

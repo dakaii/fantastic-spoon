@@ -57,7 +57,7 @@ provisioners/                     ← gcp-compute, aws-ec2, libvirt, on-prem
 primary-cluster-gcp/              ← GCP primary Terraform (default)
 cloud-services-gcp/               ← GCP standby + GCS
 shared-services-gcp/              ← GCP failover layer
-vpn-gateways-gcp/                 ← WireGuard city gateways (additive; own VPC)
+vpn-gateways-gcp/                 ← Consumer VPN city exits (WireGuard; additive)
 primary-cluster/                  ← AWS alternative
 cloud-services/                   ← AWS alternative
 bare-metal-simulation/            ← libvirt local VMs
@@ -79,6 +79,7 @@ scripts/vpn-bootstrap.sh          ← WireGuard city bootstrap (additive)
 - [Phase 2 Runbook — Standby + backups](docs/PHASE-2-RUNBOOK.md)
 - [Phase 4 Runbook — Witness + Cloud DNS failover](docs/PHASE-4-RUNBOOK.md)
 - [GCP Bootstrap Issues — errors & fixes log](docs/GCP-BOOTSTRAP-ISSUES.md)
+- [Consumer VPN — product overview (full-tunnel + Traefik split)](docs/CONSUMER-VPN.md)
 - [VPN Architecture — multi-region WireGuard gateways](docs/VPN-ARCHITECTURE.md)
 - [VPN Runbook — deploy / verify / destroy a city](docs/VPN-RUNBOOK.md)
 - [AWS Architecture (alternative)](docs/AWS-ARCHITECTURE.md)

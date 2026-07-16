@@ -17,6 +17,10 @@ admin_cidr     = "203.0.113.10/32"
 # Optional: allow WG from additional CIDRs (phones on cellular, etc.)
 # vpn_client_cidrs = ["203.0.113.10/32", "198.51.100.0/24"]
 
+# CIDRs allowed to scrape node_exporter :9100 (empty = admin_cidr).
+# For in-cluster Prometheus, add primary control-plane public NAT IP(s):
+# vpn_metrics_cidrs = ["203.0.113.10/32", "34.x.x.x/32"]
+
 machine_type      = "e2-small"
 wireguard_port    = 51820
 reserve_static_ip = true

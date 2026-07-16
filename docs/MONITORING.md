@@ -106,9 +106,62 @@ helm upgrade kube-prometheus-stack prometheus-community/kube-prometheus-stack \
   --reuse-values
 ```
 
+## Consumer VPN gateway
+
+Gateways live in `vpn-gateways-gcp/` (separate VPC). Ansible installs
+`node_exporter` on `:9100` with a textfile collector fed by
+`wireguard-textfile-metrics.sh` (`wg show dump` every 30s).
+
+| Metric | Meaning |
+|--------|---------|
+| `up{job="vpn-gateway"}` | Scrape health |
+| `wireguard_interface_up` | `wg0` present |
+| `wireguard_peer_last_handshake_seconds` | Peer liveness |
+| `wireguard_peer_*_bytes_total` | Transfer counters |
+
+### 1. Allow scrapes
+
+In `vpn-gateways-gcp/terraform.tfvars`, set `vpn_metrics_cidrs` to the IPs that
+will scrape (your laptop and/or primary node public NATs). Empty → `admin_cidr`.
+
+### 2. Generate scrape snippet
+
+```bash
+./scripts/vpn-prometheus-scrape-snippet.sh
+# writes / prints additionalScrapeConfigs YAML
+```
+
+Merge into kube-prometheus-stack values, for example:
+
+```bash
+helm upgrade kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+  -n monitoring \
+  -f /tmp/vpn-additional-scrape.yaml \
+  --reuse-values
+```
+
+Or apply the printed `additionalScrapeConfigs` under
+`prometheus.prometheusSpec.additionalScrapeConfigs`.
+
+### 3. Sync GitOps rules + dashboard
+
+```bash
+kubectl apply -k gitops/infrastructure/primary/monitoring/
+# or Argo CD → infra-monitoring → Sync
+```
+
+| Alert | Meaning |
+|-------|---------|
+| `VPNGatewayDown` | Exporter target `up == 0` |
+| `WireGuardPeerHandshakeStale` | No handshake for 15+ minutes |
+
+Grafana folder **Hybrid K8s Platform** → **Consumer VPN Gateway**.
+
+Product context: [CONSUMER-VPN.md](CONSUMER-VPN.md).
+
 ## Recommended integration order
 
-1. **Now:** Prometheus rules + Grafana dashboard (this PR)
+1. **Now:** Prometheus rules + Grafana dashboard (platform + VPN)
 2. **Next:** Alertmanager → Slack/email
 3. **Later:** Loki for logs
 4. **Much later:** Jaeger/Tempo for tracing

@@ -90,5 +90,9 @@ VPN city '${CITY}' is ready.
 Import the .conf into the official WireGuard app, activate the tunnel, then:
   curl -4 ifconfig.me    # should show ${ENDPOINT} when full tunnel is on
 
-See docs/VPN-RUNBOOK.md
+Metrics (after Ansible exporters):
+  curl -s http://${ENDPOINT}:9100/metrics | grep wireguard_
+  ./scripts/vpn-prometheus-scrape-snippet.sh
+
+See docs/CONSUMER-VPN.md and docs/VPN-RUNBOOK.md
 EOF

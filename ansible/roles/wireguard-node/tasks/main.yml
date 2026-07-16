@@ -55,8 +55,6 @@
     enabled: true
     state: started
 
-handlers:
-  - name: Restart WireGuard
-    ansible.builtin.systemd:
-      name: wg-quick@wg0
-      state: restarted
+- name: Install VPN Prometheus exporters
+  ansible.builtin.include_tasks: exporters.yml
+  when: vpn_metrics_enabled | bool

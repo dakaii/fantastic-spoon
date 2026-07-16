@@ -1,0 +1,145 @@
+---
+# node_exporter + WireGuard textfile metrics for consumer VPN monitoring.
+- name: Create exporter directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - /opt/node_exporter
+    - /var/lib/node_exporter/textfile_collector
+
+- name: Download node_exporter
+  ansible.builtin.unarchive:
+    src: >-
+      https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz
+    dest: /opt/node_exporter
+    remote_src: true
+    creates: /opt/node_exporter/node_exporter-{{ node_exporter_version }}.linux-amd64/node_exporter
+
+- name: Install node_exporter binary
+  ansible.builtin.copy:
+    src: /opt/node_exporter/node_exporter-{{ node_exporter_version }}.linux-amd64/node_exporter
+    dest: /usr/local/bin/node_exporter
+    mode: "0755"
+    remote_src: true
+
+- name: Install WireGuard textfile metrics script
+  ansible.builtin.copy:
+    dest: /usr/local/bin/wireguard-textfile-metrics.sh
+    mode: "0755"
+    content: |
+      #!/usr/bin/env bash
+      # Emit WireGuard peer metrics for node_exporter textfile collector.
+      set -euo pipefail
+      OUT=/var/lib/node_exporter/textfile_collector/wireguard.prom
+      TMP="$(mktemp)"
+      trap 'rm -f "$TMP"' EXIT
+
+      {
+        echo '# HELP wireguard_peer_last_handshake_seconds Unix time of last handshake'
+        echo '# TYPE wireguard_peer_last_handshake_seconds gauge'
+        echo '# HELP wireguard_peer_receive_bytes_total Bytes received from peer'
+        echo '# TYPE wireguard_peer_receive_bytes_total counter'
+        echo '# HELP wireguard_peer_transmit_bytes_total Bytes sent to peer'
+        echo '# TYPE wireguard_peer_transmit_bytes_total counter'
+        echo '# HELP wireguard_interface_up 1 if wg interface exists'
+        echo '# TYPE wireguard_interface_up gauge'
+
+        if ! command -v wg >/dev/null || ! wg show interfaces >/dev/null 2>&1; then
+          echo 'wireguard_interface_up{interface="wg0"} 0'
+          exit 0
+        fi
+
+        while read -r iface; do
+          [[ -n "$iface" ]] || continue
+          echo "wireguard_interface_up{interface=\"${iface}\"} 1"
+          # dump: iface priv pub port fwmark | peer pubkey psk endpoint allowed handshake rx tx keepalive
+          wg show "$iface" dump | awk -v iface="$iface" '
+            NF == 5 { next }
+            NF >= 8 {
+              pubkey=$1; handshake=$5; rx=$6; tx=$7
+              gsub(/"/, "", pubkey)
+              printf "wireguard_peer_last_handshake_seconds{interface=\"%s\",public_key=\"%s\"} %s\n", iface, pubkey, handshake
+              printf "wireguard_peer_receive_bytes_total{interface=\"%s\",public_key=\"%s\"} %s\n", iface, pubkey, rx
+              printf "wireguard_peer_transmit_bytes_total{interface=\"%s\",public_key=\"%s\"} %s\n", iface, pubkey, tx
+            }
+          '
+        done < <(wg show interfaces)
+      } >"$TMP"
+
+      mv "$TMP" "$OUT"
+      chmod 644 "$OUT"
+
+- name: Install node_exporter systemd unit
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/node_exporter.service
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Prometheus Node Exporter (VPN gateway)
+      After=network-online.target
+      Wants=network-online.target
+
+      [Service]
+      Type=simple
+      User=root
+      ExecStart=/usr/local/bin/node_exporter \
+        --web.listen-address=:{{ node_exporter_port }} \
+        --collector.textfile.directory=/var/lib/node_exporter/textfile_collector \
+        --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|run)($|/)
+      Restart=on-failure
+      RestartSec=5
+
+      [Install]
+      WantedBy=multi-user.target
+  notify: Restart node_exporter
+
+- name: Install WireGuard metrics timer units
+  ansible.builtin.copy:
+    dest: "{{ item.dest }}"
+    mode: "0644"
+    content: "{{ item.content }}"
+  loop:
+    - dest: /etc/systemd/system/wireguard-textfile-metrics.service
+      content: |
+        [Unit]
+        Description=Write WireGuard Prometheus textfile metrics
+        After=wg-quick@wg0.service
+
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/local/bin/wireguard-textfile-metrics.sh
+    - dest: /etc/systemd/system/wireguard-textfile-metrics.timer
+      content: |
+        [Unit]
+        Description=Refresh WireGuard textfile metrics every 30s
+
+        [Timer]
+        OnBootSec=15s
+        OnUnitActiveSec=30s
+        AccuracySec=5s
+
+        [Install]
+        WantedBy=timers.target
+  notify: Restart wireguard metrics timer
+
+- name: Enable and start node_exporter
+  ansible.builtin.systemd:
+    name: node_exporter
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Enable and start WireGuard metrics timer
+  ansible.builtin.systemd:
+    name: wireguard-textfile-metrics.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Run WireGuard metrics once
+  ansible.builtin.command: /usr/local/bin/wireguard-textfile-metrics.sh
+  changed_when: false

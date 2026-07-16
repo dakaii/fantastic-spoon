@@ -59,6 +59,18 @@ variable "vpn_client_cidrs" {
   default     = []
 }
 
+variable "vpn_metrics_cidrs" {
+  description = "CIDRs allowed to scrape node_exporter (9100). Empty = admin_cidr. Add primary node NAT IPs for in-cluster Prometheus."
+  type        = list(string)
+  default     = []
+}
+
+variable "node_exporter_port" {
+  description = "TCP port for Prometheus node_exporter on the gateway"
+  type        = number
+  default     = 9100
+}
+
 variable "wireguard_port" {
   description = "UDP listen port for WireGuard"
   type        = number

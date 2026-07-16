@@ -1,0 +1,16 @@
+# Example helm values fragment — merge into kube-prometheus-stack.
+# Generated dynamically by: ./scripts/vpn-prometheus-scrape-snippet.sh
+#
+# prometheus:
+#   prometheusSpec:
+#     additionalScrapeConfigs:
+#       - job_name: vpn-gateway
+#         scrape_interval: 30s
+#         static_configs:
+#           - targets: ["VPN_PUBLIC_IP:9100"]
+#             labels:
+#               city: us
+#               role: vpn-gateway
+prometheus:
+  prometheusSpec:
+    additionalScrapeConfigs: []
