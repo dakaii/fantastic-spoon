@@ -45,7 +45,9 @@ GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-setup-github-actions.sh --push-secrets
 
 # Deploy + Destroy + Phase 4 shared-services (Compute/Storage/DNS/Functions/...):
 GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-setup-github-actions.sh --full --push-secrets
-# --full now also grants serviceUsageAdmin + Phase 4 roles (DNS, Functions, Run, Workflows, …)
+# --full grants: Compute/Storage admin, storage.hmacKeyAdmin (Velero HMAC destroy),
+# serviceUsageAdmin, Phase 4 roles (DNS, Functions, Run, Workflows, …)
+# Re-run with --full anytime to add missing roles to an existing github-actions SA.
 ```
 
 | Secret | Required for |
@@ -247,6 +249,7 @@ Full write-up of failures from primary/standby bring-up (with run IDs and PRs):
 | SSH timeout | `admin_cidr` stale — update tfvars + `terraform apply` (dev: temp `0.0.0.0/0`) |
 | Deploy tries to recreate VMs | Run `./scripts/gcp-tfstate-sync.sh push` from Mac first |
 | Destroy does nothing | Same — state must be in GCS bucket |
+| Destroy “success” but standby left / HMAC 403 | Re-run setup with `--full` (needs `roles/storage.hmacKeyAdmin`); workflow now fails the job if any module destroy errors |
 | Ansible fails | Re-run **GCP Bootstrap** (idempotent) after clearing stuck Helm if needed |
 | Argo CD `failed pre-install` / stuck Helm | Skip redis hook + cleanup release secrets — see issues log §8–9. Manual: `helm uninstall argocd -n argocd` then delete `sh.helm.release.v1.argocd*` |
 | NodePort `30080` already allocated | Argo CD uses `32080`/`32443` (not Traefik’s range) |
