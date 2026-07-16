@@ -90,7 +90,7 @@ cd primary-cluster-gcp && terraform apply
 
 ```bash
 gh workflow run gcp-bootstrap.yml -f cluster=primary -R dakaii/fantastic-spoon
-gh run watch 29188090281 -R dakaii/fantastic-spoon   # watch a specific run ID
+gh run watch -R dakaii/fantastic-spoon
 ```
 
 ### Phase 2 (standby + GCS + Velero) — no local login
@@ -294,7 +294,10 @@ gcloud compute instances set-machine-type hybrid-k8s-cp-1 \
   --zone=us-central1-a --project=hybrid-k8s-dev --machine-type=e2-medium
 gcloud compute instances start hybrid-k8s-cp-1 --zone=us-central1-a --project=hybrid-k8s-dev
 
-ssh ubuntu@136.112.126.15 "sudo systemctl restart k3s && sleep 60 && sudo k3s kubectl get nodes"
+# After start, pick the CP public IP from:
+#   terraform -chdir=primary-cluster-gcp output -json primary_control_plane_ips
+ssh ubuntu@CONTROL_PLANE_PUBLIC_IP \
+  "sudo systemctl restart k3s && sleep 60 && sudo k3s kubectl get nodes"
 ```
 
 Or change `control_plane_machine_type` in local `terraform.tfvars` and `terraform apply` (instance must be stopped).
