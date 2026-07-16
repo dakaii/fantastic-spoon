@@ -116,6 +116,8 @@ bind_role "roles/compute.viewer"
 if [[ "$FULL_ROLES" -eq 1 ]]; then
   bind_role "roles/compute.admin"
   bind_role "roles/storage.admin"
+  # Velero HMAC keys in cloud-services-gcp — storage.admin alone has failed refresh/destroy in CI
+  bind_role "roles/storage.hmacKeyAdmin"
   bind_role "roles/iam.serviceAccountUser"
   # Required for terraform/gcloud to enable APIs (gcp-phase2 / shared-services apply)
   bind_role "roles/serviceusage.serviceUsageAdmin"
