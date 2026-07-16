@@ -83,19 +83,31 @@ Ensure `vpn_metrics_cidrs` (or `admin_cidr`) allows scrapes from wherever
 Prometheus runs (often: your laptop IP for port-forward tests, or primary node
 egress IPs for in-cluster scrape).
 
-## Add a client (phone)
+## Multi-peer clients (laptop + phone + …)
 
-```bash
-CITY=us
-DIR=vpn-clients/$CITY
-wg genkey | tee "$DIR/phone.privatekey" | wg pubkey >"$DIR/phone.publickey"
+One gateway, many devices. Each device gets its own keypair and tunnel IP
+(`10.66.0.2`, `.3`, …). Layout (gitignored):
 
-# Re-run ansible with an extra peer — V1 playbook is single-peer;
-# for a second peer, edit /etc/wireguard/wg0.conf on the gateway
-# (multi-peer ansible is Phase V2) or temporarily replace laptop keys.
+```
+vpn-clients/<city>/
+  server.privatekey / server.publickey
+  peers/
+    laptop.privatekey / laptop.publickey / laptop.address
+    phone.privatekey  / …
+  laptop-<city>.conf
+  phone-<city>.conf
 ```
 
-For V1, one peer per city is enough. Multi-peer = consumer “family plan” later.
+```bash
+./scripts/vpn-bootstrap.sh                 # first peer: laptop
+./scripts/vpn-peer-add.sh us phone --apply # second device
+./scripts/vpn-peer-list.sh us
+./scripts/vpn-peer-remove.sh us phone --apply
+./scripts/vpn-apply-peers.sh us            # re-push all peers to gateway
+```
+
+`--apply` runs Ansible so the gateway’s `/etc/wireguard/wg0.conf` lists every peer.
+Without `--apply`, keys/configs are local only until you apply.
 
 ## Tear down
 

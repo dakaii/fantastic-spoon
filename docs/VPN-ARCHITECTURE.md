@@ -214,13 +214,20 @@ AllowedIPs = 10.66.<city_id>.2/32
 
 Enable IP forwarding via Ansible `sysctl` on gateway nodes (`net.ipv4.ip_forward=1`).
 
-### 4.3 Client config generation
+### 4.3 Client config generation (multi-peer)
 
-Script: `scripts/generate-wg-client-config.sh`
+Scripts:
 
-Inputs: city, client name, server endpoint IP/DNS, server pubkey, client keys (generate if missing).  
-Output: `*.conf` for official clients.  
-Store client private keys **only locally** (gitignored `vpn-clients/`).
+| Script | Purpose |
+|--------|---------|
+| `vpn-bootstrap.sh` | Server keys + first peer `laptop` + Ansible apply |
+| `vpn-peer-add.sh` | New device keypair + IP + `.conf` |
+| `vpn-peer-remove.sh` | Drop a peer |
+| `vpn-peer-list.sh` | Show peers |
+| `vpn-apply-peers.sh` | Push all peers to gateway |
+| `generate-wg-client-config.sh` | Write stock client `.conf` |
+
+Store private keys **only** under gitignored `vpn-clients/<city>/peers/`.
 
 ### 4.4 Traefik private routes (platform access demo)
 
@@ -290,6 +297,17 @@ See [CONSUMER-VPN.md](CONSUMER-VPN.md) §5 and [MONITORING.md](MONITORING.md#con
 7. [x] Prometheus scrape snippet + VPN alert rules / Grafana dashboard manifests
 
 **Exit criteria:** Stable handshake; full-tunnel egress IP correct; keys not in git; exporters listening.
+
+### Phase V1.1 — Multi-peer clients
+
+**Outcome:** Multiple devices (laptop, phone, friend) on one city exit.
+
+1. [x] `vpn-clients/<city>/peers/<name>.*` inventory  
+2. [x] `scripts/vpn-peer-add.sh` / `remove` / `list` / `vpn-apply-peers.sh`  
+3. [x] Ansible `wg_peers` loop in `wg0.conf.j2`  
+4. [x] Docs in CONSUMER-VPN + VPN-RUNBOOK  
+
+**Exit criteria:** Two devices online concurrently; `wg show` lists both peers.
 
 ### Phase V2 — Second city
 
@@ -375,6 +393,7 @@ Do **not** block on Phase 4 shared-services DNS. Do **not** start a client app.
 | 2026-07-14 | Dedicated VM (host WG), not k3s agent | Avoids inventory/ApplicationSet coupling |
 | 2026-07-16 | Product = consumer full-tunnel VPN | Traefik stays for ops plane only |
 | 2026-07-16 | Monitor via node_exporter + WG textfile → primary Prometheus | Additive; separate VPC |
+| 2026-07-16 | Multi-peer client inventory + Ansible `wg_peers` | Consumer multi-device |
 | TBD | First second city region | Suggest asia-east2 (`city=hk`) |
 ---
 

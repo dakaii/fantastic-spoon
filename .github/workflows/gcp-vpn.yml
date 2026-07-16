@@ -1,4 +1,4 @@
-# VPN V1: provision WireGuard gateway VM + configure host WG + client profile
+# VPN V1.1: provision WireGuard gateway + multi-peer-capable host WG + laptop client profile
 # Additive — does not modify primary/standby clusters.
 # Download the artifact .conf and import into the official WireGuard app.
 # See docs/VPN-RUNBOOK.md and docs/GITHUB-ACTIONS-SETUP.md
