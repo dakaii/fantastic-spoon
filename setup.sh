@@ -32,13 +32,10 @@ check_tools() {
 }
 
 cmd_destroy() {
-  check_tools
-  log "Destroying standby then primary (type 'yes' when prompted)"
-  cd "${REPO_ROOT}/cloud-services-gcp"
-  [[ -f terraform.tfvars ]] && terraform init -input=false && terraform destroy
-  cd "${REPO_ROOT}/primary-cluster-gcp"
-  [[ -f terraform.tfvars ]] && terraform init -input=false && terraform destroy
-  log "Done. Billing stops when resources are gone."
+  : "${GCP_PROJECT:?Set GCP_PROJECT (e.g. GCP_PROJECT=hybrid-k8s-dev ./setup.sh destroy)}"
+  chmod +x scripts/*.sh 2>/dev/null || true
+  log "Delegating to scripts/gcp-teardown.sh (ADC check + state push + destroy)"
+  exec "${REPO_ROOT}/scripts/gcp-teardown.sh"
 }
 
 main() {
@@ -52,7 +49,7 @@ main() {
 Usage: ./setup.sh [destroy]
 
   ./setup.sh            Deploy everything on GCP (k3s + standby + Linkding)
-  ./setup.sh destroy    Tear down GCE + GCS resources
+  ./setup.sh destroy    Tear down via scripts/gcp-teardown.sh (needs GCP_PROJECT)
 
 Optional: GCP_PROJECT=your-project-id ./setup.sh
 EOF
