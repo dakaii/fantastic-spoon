@@ -12,10 +12,12 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+export REPO_ROOT
 TF_DIR="${REPO_ROOT}/vpn-gateways-gcp"
 INV_OUT="${REPO_ROOT}/ansible/inventory/vpn-hosts.yml"
 # shellcheck source=vpn-peers-lib.sh
-source "${REPO_ROOT}/scripts/vpn-peers-lib.sh"
+# shellcheck disable=SC1091
+source "$(dirname "$0")/vpn-peers-lib.sh"
 
 log() { echo "==> $*"; }
 

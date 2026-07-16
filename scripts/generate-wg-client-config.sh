@@ -9,8 +9,10 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+export REPO_ROOT
 # shellcheck source=vpn-peers-lib.sh
-source "${REPO_ROOT}/scripts/vpn-peers-lib.sh"
+# shellcheck disable=SC1091
+source "$(dirname "$0")/vpn-peers-lib.sh"
 
 CITY="${1:?Usage: generate-wg-client-config.sh <city> [client-name]}"
 CLIENT_NAME="${2:-laptop}"
