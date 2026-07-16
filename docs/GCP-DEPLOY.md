@@ -77,7 +77,12 @@ export SSH_PUBLIC_KEY="$(cat ~/.ssh/id_ed25519.pub)"
 
 **Rough time:** 15–30 minutes (mostly waiting for VMs and Ansible).
 
-**Cost:** ~$39–51/month while running — destroy with `terraform destroy` in each module when idle.
+**Cost:** ~$39–51/month while running — tear down with:
+
+```bash
+GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-teardown.sh              # local
+GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-teardown.sh --gha --watch # or GHA
+```
 
 ---
 

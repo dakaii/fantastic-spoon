@@ -212,15 +212,36 @@ gh workflow run gcp-deploy-all.yml -R dakaii/fantastic-spoon
 
 ### Destroy everything (stop billing)
 
-Actions → **GCP Destroy** → Run workflow
+**Recommended (one command):** pushes local Terraform state, checks that ADC matches
+your `gcloud` account, then destroys.
 
-Optional: check **delete_project** to remove the GCP project too.
+```bash
+# Local destroy (uses your Mac + ADC — best when you applied TF locally)
+GCP_PROJECT=hybrid-k8s-dev GCP_ACCOUNT=you@gmail.com ./scripts/gcp-teardown.sh
+
+# Or GitHub Actions (push state first, then workflow with pre/post VM checks)
+GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-teardown.sh --gha --watch
+```
+
+**GCP Destroy** workflow now:
+1. Fails early if VMs exist but GCS has no Terraform state (push state first)
+2. Runs `terraform destroy` for all modules (fails the job on module errors)
+3. Fails if any compute instances remain afterward
+
+Actions → **GCP Destroy** → Run workflow still works if state is already in GCS:
 
 ```bash
 gh workflow run gcp-destroy.yml -R dakaii/fantastic-spoon
 ```
 
+Optional: check **delete_project** to remove the GCP project too.
+
 Tip: add a [GitHub Environment](https://docs.github.com/en/actions/deployment/targeting-different-environments) with required reviewers on **GCP Destroy**.
+
+**Why destroy used to “succeed” but leave VMs:** (1) local state never pushed to GCS,
+(2) `gcloud` account ≠ Application Default Credentials (Terraform uses ADC),
+(3) missing `roles/storage.hmacKeyAdmin` on the GHA SA. `gcp-teardown.sh` covers (1)+(2);
+re-run `./scripts/gcp-setup-github-actions.sh --full` for (3).
 
 ---
 
@@ -248,8 +269,9 @@ Full write-up of failures from primary/standby bring-up (with run IDs and PRs):
 |---------|-----|
 | SSH timeout | `admin_cidr` stale — update tfvars + `terraform apply` (dev: temp `0.0.0.0/0`) |
 | Deploy tries to recreate VMs | Run `./scripts/gcp-tfstate-sync.sh push` from Mac first |
-| Destroy does nothing | Same — state must be in GCS bucket |
+| Destroy does nothing | Same — state must be in GCS bucket (`./scripts/gcp-teardown.sh` pushes first) |
 | Destroy “success” but standby left / HMAC 403 | Re-run setup with `--full` (needs `roles/storage.hmacKeyAdmin`); workflow now fails the job if any module destroy errors |
+| Terraform 403 as wrong email | `gcloud` ≠ ADC — `gcloud auth application-default login` as the project owner; or use `./scripts/gcp-teardown.sh` which checks |
 | Ansible fails | Re-run **GCP Bootstrap** (idempotent) after clearing stuck Helm if needed |
 | Argo CD `failed pre-install` / stuck Helm | Skip redis hook + cleanup release secrets — see issues log §8–9. Manual: `helm uninstall argocd -n argocd` then delete `sh.helm.release.v1.argocd*` |
 | NodePort `30080` already allocated | Argo CD uses `32080`/`32443` (not Traefik’s range) |

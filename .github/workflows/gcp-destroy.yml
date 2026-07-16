@@ -1,5 +1,6 @@
 # Destroy all Terraform-managed resources in the GCP project
 # Does NOT delete the GCP project unless delete_project input is true
+# Prefer: GCP_PROJECT=... ./scripts/gcp-teardown.sh --gha --watch (pushes local state first)
 # See docs/GITHUB-ACTIONS-SETUP.md — recommend GitHub Environment approval for this workflow
 
 name: GCP Destroy
@@ -27,6 +28,7 @@ jobs:
           [[ -n "$GCP_PROJECT" ]] || { echo "::error::Missing secret GCP_PROJECT"; missing=1; }
           [[ -n "$GCP_SA_KEY" ]] || { echo "::error::Missing secret GCP_SA_KEY"; missing=1; }
           if [[ $missing -ne 0 ]]; then
+            echo "See docs/GITHUB-ACTIONS-SETUP.md"
             exit 1
           fi
 
@@ -55,6 +57,13 @@ jobs:
           ADMIN_CIDR="${ADMIN_CIDR:-0.0.0.0/0}"
           ./scripts/gcp-deploy.sh init
 
+      - name: Pre-check (VMs vs Terraform state)
+        env:
+          GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
+        run: |
+          chmod +x scripts/*.sh
+          ./scripts/gcp-destroy-verify.sh pre
+
       - name: Destroy resources
         env:
           GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
@@ -62,3 +71,11 @@ jobs:
         run: |
           chmod +x scripts/*.sh
           ./scripts/gcp-destroy-all.sh
+
+      - name: Post-check (no instances left)
+        if: ${{ inputs.delete_project != true }}
+        env:
+          GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
+        run: |
+          chmod +x scripts/*.sh
+          ./scripts/gcp-destroy-verify.sh post
