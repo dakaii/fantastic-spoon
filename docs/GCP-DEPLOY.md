@@ -120,8 +120,8 @@ For full Terraform deploy from CI (advanced), also add `SSH_PUBLIC_KEY`, `ADMIN_
 ### Setting up full GitHub Actions deploy (advanced)
 
 **`gcp-deploy-all.yml`** runs the full stack including Linkding/Argo CD apps. Use the
-`skip_apps` workflow input to deploy infra only. Locally, `./scripts/gcp-deploy.sh apps`
-does the same app step.
+`skip_apps` workflow input to deploy infra only. Locally: `SKIP_APPS=1 ./scripts/gcp-deploy.sh all`
+for infra only, or `./scripts/gcp-deploy.sh apps` for the app step alone.
 
 **Recommendation:** Use local `./scripts/gcp-deploy.sh` until the cluster works, then add GHA for `terraform validate` on PRs. Add full GHA deploy only if you want push-button redeploys without your laptop.
 

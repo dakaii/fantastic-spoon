@@ -94,7 +94,7 @@ it dials the gateway (not your WireGuard client IP, and not related to port-forw
 
 | Prometheus runs on… | Allow this in `vpn_metrics_cidrs` |
 |---------------------|-----------------------------------|
-| Primary k3s (typical) | Primary control-plane public NAT IP(s) |
+| Primary k3s (typical) | All primary node public NAT IP(s) from `primary_public_ips` (CP + workers — Prometheus may schedule on a worker) |
 | Your laptop (local Prometheus) | Your public IP `/32` |
 
 `kubectl port-forward` to Grafana is only for **viewing dashboards** — it does not

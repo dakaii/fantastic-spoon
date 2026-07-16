@@ -26,7 +26,8 @@ These are **different planes**. End users of the consumer VPN do not need Grafan
 
 Port-forward opens a local tunnel to the cluster API; it does **not** change which IP
 Prometheus uses when scraping the VPN gateway. For in-cluster scrape, allow primary
-node egress IPs in `vpn_metrics_cidrs` (see below).
+node public NAT IPs in `vpn_metrics_cidrs` — use `primary_public_ips`, not control-plane
+only (see below).
 
 ## Quick start
 
@@ -79,7 +80,11 @@ kubectl get nodes
 ssh <control-plane> sudo systemctl status k3s
 ```
 
-**Action:** If cluster is truly dead and the Cloud Function witness hasn't fired, initiate failover manually (`scripts/failover-gcp.sh` or `scripts/failover.sh` on AWS).
+**Action:** If the cluster is truly dead and the Cloud Function witness has not cut
+over DNS yet, follow [PHASE-4-RUNBOOK.md](PHASE-4-RUNBOOK.md). After standby is
+reachable, activate apps with `./scripts/failover-gcp.sh activate-apps` (DNS failover
+is health-check driven — that script does not initiate cutover). On AWS, use
+`scripts/failover.sh`.
 
 ### VeleroBackupFailed
 
@@ -141,7 +146,7 @@ that initiate the scrape** — not WireGuard client addresses.
 
 | Scraper location | IP to allow |
 |------------------|-------------|
-| Prometheus on primary k3s | Primary control-plane **NAT** IP(s): `terraform -chdir=primary-cluster-gcp output -json primary_control_plane_ips` |
+| Prometheus on primary k3s | Primary node **public NAT** IP(s) — Prometheus may run on a worker, not only the control plane: `terraform -chdir=primary-cluster-gcp output -json primary_public_ips` |
 | Laptop running Prometheus locally | Your home/office public IP `/32` |
 | GitHub Actions deploy | Not a scraper — do **not** use `0.0.0.0/0` for metrics just because GHA needs open SSH |
 
@@ -150,7 +155,8 @@ If `vpn_metrics_cidrs` is empty, it defaults to `admin_cidr`. When `admin_cidr =
 you set `vpn_metrics_cidrs` explicitly. Prefer a tight list:
 
 ```hcl
-vpn_metrics_cidrs = ["34.x.x.x/32"]   # primary CP NAT from terraform output
+# Allow every primary node NAT that might schedule the Prometheus pod (CP + workers)
+vpn_metrics_cidrs = ["34.x.x.x/32", "34.y.y.y/32"]   # from primary_public_ips
 ```
 
 ### 2. Generate scrape snippet

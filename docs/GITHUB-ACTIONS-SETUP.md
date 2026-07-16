@@ -166,12 +166,21 @@ metrics** (`:9100`) so ops can see gateway health in the existing k3s stack.
 
    ```hcl
    # vpn-gateways-gcp/terraform.tfvars
+   # List every primary node NAT that might run the Prometheus pod (CP + workers):
+   #   terraform -chdir=primary-cluster-gcp output -json primary_public_ips
    vpn_metrics_cidrs = [
-     "PRIMARY_CP_NAT_IP/32",   # terraform -chdir=primary-cluster-gcp output -json primary_control_plane_ips
+     "34.x.x.x/32",
+     "34.y.y.y/32",
    ]
    ```
 
-   Then `terraform -chdir=vpn-gateways-gcp apply` (or re-run **GCP VPN** after editing local tfvars + `gcp-tfstate-sync.sh push`).
+   Apply locally (do **not** re-run **GCP VPN** for this — that workflow sets
+   `FORCE_TFVARS=1` and regenerates tfvars **without** `vpn_metrics_cidrs`):
+
+   ```bash
+   terraform -chdir=vpn-gateways-gcp apply
+   GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-tfstate-sync.sh push
+   ```
 
 2. **Generate Prometheus scrape config:**
 
