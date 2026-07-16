@@ -217,11 +217,16 @@ your `gcloud` account, then destroys.
 
 ```bash
 # Local destroy (uses your Mac + ADC — best when you applied TF locally)
-GCP_PROJECT=hybrid-k8s-dev GCP_ACCOUNT=daiki815@gmail.com ./scripts/gcp-teardown.sh
+GCP_PROJECT=hybrid-k8s-dev GCP_ACCOUNT=you@gmail.com ./scripts/gcp-teardown.sh
 
-# Or GitHub Actions (push state first, then workflow)
+# Or GitHub Actions (push state first, then workflow with pre/post VM checks)
 GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-teardown.sh --gha --watch
 ```
+
+**GCP Destroy** workflow now:
+1. Fails early if VMs exist but GCS has no Terraform state (push state first)
+2. Runs `terraform destroy` for all modules (fails the job on module errors)
+3. Fails if any compute instances remain afterward
 
 Actions → **GCP Destroy** → Run workflow still works if state is already in GCS:
 
