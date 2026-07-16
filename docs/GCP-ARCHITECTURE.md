@@ -110,6 +110,7 @@ Terraform apply
 ├── primary-cluster-gcp/      # Project 1: GCE nodes for primary k3s HA
 ├── cloud-services-gcp/       # Project 2: GCE standby + GCS + HMAC keys
 ├── shared-services-gcp/    # Project 3: Cloud DNS, witness, Workflows
+├── vpn-gateways-gcp/         # Additive: consumer WireGuard exits (own VPC; safe to destroy alone)
 ├── primary-cluster/          # AWS alternative (unchanged)
 ├── cloud-services/           # AWS alternative (unchanged)
 ├── shared-services/          # AWS alternative (unchanged)
@@ -118,7 +119,24 @@ Terraform apply
 └── docs/
 ```
 
-Apply order: `primary-cluster-gcp` → `cloud-services-gcp` → Ansible → `shared-services-gcp` (needs domain for Cloud DNS).
+Apply order: `primary-cluster-gcp` → `cloud-services-gcp` → Ansible → `shared-services-gcp` (needs domain for Cloud DNS). **Consumer VPN** (`vpn-gateways-gcp`) is optional and independent — deploy anytime via [VPN-RUNBOOK.md](VPN-RUNBOOK.md).
+
+---
+
+## Consumer VPN (additive, optional)
+
+A separate **consumer WireGuard** stack for full-tunnel egress. It does **not** share
+VPC or Terraform state with primary/standby.
+
+| | Platform (k3s) | Consumer VPN |
+|--|----------------|--------------|
+| Purpose | Run apps, GitOps, Prometheus/Grafana | End-user internet egress |
+| Terraform | `primary-cluster-gcp/`, etc. | `vpn-gateways-gcp/` (own VPC) |
+| Destroy impact | Loses cluster | Loses exit VM only |
+| Monitoring | Prometheus on primary scrapes gateway `:9100` | Not required for consumer clients |
+
+End users connect with stock WireGuard clients. Operators use `kubectl port-forward` or
+Traefik for Grafana — **not** the consumer VPN tunnel. Detail: [CONSUMER-VPN.md](CONSUMER-VPN.md).
 
 ---
 

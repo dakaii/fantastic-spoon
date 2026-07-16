@@ -14,9 +14,11 @@ Run deploy and destroy from GitHub’s cloud so you can close your laptop. Works
 | **GCP Phase 2** | Standby Terraform + bootstrap + Velero on primary (after Phase 1) |
 | **GCP Phase 4** | Witness + optional Cloud DNS (`shared-services-gcp`) |
 | **GCP VPN** | WireGuard gateway VM + client `.conf` artifact (single city) |
-| **GCP Deploy All** | Full stack: Terraform + bootstrap + Linkding apps |
+| **GCP VPN Destroy** | Tear down VPN gateway only (primary/standby untouched) |
+| **GCP Deploy All** | Full stack: Terraform + bootstrap + Linkding apps (`skip_apps` to skip apps) |
 | **GCP Destroy** | Tear down all resources (`terraform destroy`) |
 | **Terraform Validate** | Automatic on PRs — no secrets |
+| **Shellcheck** | Automatic on PRs — lints `scripts/*.sh` |
 
 ---
 
@@ -153,6 +155,41 @@ See [VPN-RUNBOOK.md](VPN-RUNBOOK.md).
 gh workflow run gcp-vpn-destroy.yml -R dakaii/fantastic-spoon
 gh run watch -R dakaii/fantastic-spoon
 ```
+
+#### After VPN deploy — hook up monitoring (manual, ~5 min)
+
+Consumer VPN is **not** how you access Grafana. These steps wire **Prometheus → gateway
+metrics** (`:9100`) so ops can see gateway health in the existing k3s stack.
+
+1. **Tighten metrics firewall** — if `admin_cidr = "0.0.0.0/0"` (common for GHA), metrics
+   inherit that unless you set `vpn_metrics_cidrs` explicitly. Add only scraper IPs:
+
+   ```hcl
+   # vpn-gateways-gcp/terraform.tfvars
+   vpn_metrics_cidrs = [
+     "PRIMARY_CP_NAT_IP/32",   # terraform -chdir=primary-cluster-gcp output -json primary_control_plane_ips
+   ]
+   ```
+
+   Then `terraform -chdir=vpn-gateways-gcp apply` (or re-run **GCP VPN** after editing local tfvars + `gcp-tfstate-sync.sh push`).
+
+2. **Generate Prometheus scrape config:**
+
+   ```bash
+   ./scripts/vpn-prometheus-scrape-snippet.sh
+   ```
+
+3. **Merge into kube-prometheus-stack** (see [MONITORING.md](MONITORING.md#consumer-vpn-gateway)).
+
+4. **Sync GitOps rules + dashboard:**
+
+   ```bash
+   kubectl apply -k gitops/infrastructure/primary/monitoring/
+   ```
+
+5. **Open Grafana** (no VPN required): `kubectl port-forward svc/kube-prometheus-stack-grafana -n monitoring 3000:80`
+
+Full detail: [VPN-RUNBOOK.md](VPN-RUNBOOK.md#hook-into-platform-monitoring), [CONSUMER-VPN.md](CONSUMER-VPN.md).
 
 ### Full deploy (greenfield or re-deploy)
 

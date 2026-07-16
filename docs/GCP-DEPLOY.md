@@ -96,9 +96,13 @@ Best for: validating Terraform on every PR, team workflows, repeatable deploys a
 This repo includes:
 
 - **`terraform-validate.yml`** — runs on every PR (no GCP secrets needed)
+- **`shellcheck.yml`** — lints `scripts/*.sh` on PRs
 - **`gcp-bootstrap.yml`** — manual bootstrap on existing GCE VMs
 - **`gcp-deploy-all.yml`** — manual full deploy (Terraform + Ansible + apps)
-- **`gcp-destroy.yml`** — manual teardown (`terraform destroy`)
+- **`gcp-phase2.yml`** — standby + Velero (after Phase 1)
+- **`gcp-phase4.yml`** — witness + optional Cloud DNS failover
+- **`gcp-vpn.yml`** / **`gcp-vpn-destroy.yml`** — consumer VPN deploy / VPN-only destroy
+- **`gcp-destroy.yml`** — manual teardown (full stack)
 
 See **[GITHUB-ACTIONS-SETUP.md](GITHUB-ACTIONS-SETUP.md)** for step-by-step secret setup.
 
@@ -115,7 +119,9 @@ For full Terraform deploy from CI (advanced), also add `SSH_PUBLIC_KEY`, `ADMIN_
 
 ### Setting up full GitHub Actions deploy (advanced)
 
-**Note:** The GHA workflow only supports `infra` (not `apps`). Run `./scripts/gcp-deploy.sh apps` locally after infra succeeds.
+**`gcp-deploy-all.yml`** runs the full stack including Linkding/Argo CD apps. Use the
+`skip_apps` workflow input to deploy infra only. Locally, `./scripts/gcp-deploy.sh apps`
+does the same app step.
 
 **Recommendation:** Use local `./scripts/gcp-deploy.sh` until the cluster works, then add GHA for `terraform validate` on PRs. Add full GHA deploy only if you want push-button redeploys without your laptop.
 

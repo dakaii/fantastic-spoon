@@ -52,6 +52,7 @@ Open http://localhost:3000 → Dashboards → **Hybrid K8s Platform Overview**
 | `VeleroNoRecentBackup` | warning | No backup in 6+ hours |
 | `TraefikDown` | critical | No ingress — traffic can't flow |
 | `VPNGatewayDown` | critical | Consumer VPN exit unreachable |
+| `WireGuardInterfaceDown` | critical | `wg0` down on gateway |
 | `WireGuardPeerHandshakeStale` | warning | Client offline or tunnel broken |
 | `ArgoCDAppUnhealthy` | warning | GitOps drift |
 
@@ -70,11 +71,11 @@ helm upgrade kube-prometheus-stack prometheus-community/kube-prometheus-stack \
 
 ## Failover integration
 
-Prometheus alerts complement (but do not replace) the Lambda witness:
+Prometheus alerts complement (but do not replace) the Cloud Function witness:
 
 ```
 Prometheus/Alertmanager  →  Slack/email (human awareness)
-Lambda witness           →  Automated Route53 failover
+Cloud Function witness   →  Automated Cloud DNS failover (Phase 4)
 ```
 
 Both should fire on API server failure — independent paths are intentional.
