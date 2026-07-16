@@ -89,9 +89,17 @@ Add the printed scrape jobs to kube-prometheus-stack (see
 [MONITORING.md](MONITORING.md#consumer-vpn-gateway)). Sync GitOps monitoring so
 `prometheus-rules-vpn` and the VPN Grafana dashboard are present.
 
-Ensure `vpn_metrics_cidrs` (or `admin_cidr`) allows scrapes from wherever
-Prometheus runs (often: your laptop IP for port-forward tests, or primary node
-egress IPs for in-cluster scrape).
+Ensure `vpn_metrics_cidrs` allows scrapes from the **source IP Prometheus uses** when
+it dials the gateway (not your WireGuard client IP, and not related to port-forward):
+
+| Prometheus runs on… | Allow this in `vpn_metrics_cidrs` |
+|---------------------|-----------------------------------|
+| Primary k3s (typical) | All primary node public NAT IP(s) from `primary_public_ips` (CP + workers — Prometheus may schedule on a worker) |
+| Your laptop (local Prometheus) | Your public IP `/32` |
+
+`kubectl port-forward` to Grafana is only for **viewing dashboards** — it does not
+change scrape egress. If `admin_cidr = "0.0.0.0/0"`, set `vpn_metrics_cidrs` explicitly
+or metrics `:9100` inherits the open SSH range. See [MONITORING.md](MONITORING.md#consumer-vpn-gateway).
 
 ## Multi-peer clients (laptop + phone + …)
 
@@ -160,4 +168,4 @@ Do not merge into primary Terraform.
 - Private keys live only under `vpn-clients/` (gitignored)
 - Prefer locking `vpn_client_cidrs` to your IPs; open carefully for mobile
 - Gateway has `NET` forwarding + NAT — treat like an edge firewall / consumer exit
-- Metrics (`:9100`) are admin-only — do not expose to `0.0.0.0/0`
+- Metrics (`:9100`) are admin-only — set `vpn_metrics_cidrs` explicitly; do not rely on `admin_cidr = "0.0.0.0/0"` for metrics

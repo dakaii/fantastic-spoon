@@ -22,8 +22,10 @@ admin_cidr     = "203.0.113.10/32"
 # vpn_client_cidrs = ["203.0.113.10/32", "198.51.100.0/24"]
 
 # CIDRs allowed to scrape node_exporter :9100 (empty = admin_cidr).
-# For in-cluster Prometheus, add primary control-plane public NAT IP(s):
-# vpn_metrics_cidrs = ["203.0.113.10/32", "34.x.x.x/32"]
+# IMPORTANT: if admin_cidr is 0.0.0.0/0 for GHA SSH, metrics inherit that unless set here.
+# For in-cluster Prometheus, add all primary node public NAT IPs (CP + workers):
+#   terraform -chdir=../primary-cluster-gcp output -json primary_public_ips
+# vpn_metrics_cidrs = ["34.x.x.x/32", "34.y.y.y/32"]
 
 machine_type      = "e2-small"
 wireguard_port    = 51820

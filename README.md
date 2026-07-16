@@ -74,6 +74,7 @@ scripts/vpn.sh                    ← CLI connect/disconnect (up/down/ip)
 
 - [GCP Architecture (default)](docs/GCP-ARCHITECTURE.md)
 - [GCP Deploy guide — local scripts vs GitHub Actions](docs/GCP-DEPLOY.md)
+- [GitHub Actions setup — secrets, workflows, VPN/monitoring post-steps](docs/GITHUB-ACTIONS-SETUP.md)
 - [Monitoring — Prometheus alerts + Grafana](docs/MONITORING.md)
 - [Portable architecture — swap cloud for on-prem](docs/PORTABLE-ARCHITECTURE.md)
 - [Phase 1 Runbook — Primary cluster](docs/PHASE-1-RUNBOOK.md)

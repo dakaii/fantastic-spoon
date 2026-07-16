@@ -58,7 +58,7 @@ fi
 cat <<EOF >&2
 
 Next:
-  1. Ensure vpn_metrics_cidrs includes the scraper IP (admin or primary NAT)
+  1. Ensure vpn_metrics_cidrs includes scraper NAT IP(s) — for in-cluster Prometheus use primary_public_ips (all primary nodes)
   2. helm upgrade ... -f <this-file> --reuse-values
   3. kubectl apply -k gitops/infrastructure/primary/monitoring/
   4. Grafana → Consumer VPN Gateway
