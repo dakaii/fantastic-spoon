@@ -26,6 +26,7 @@ jobs:
           [[ -n "$GCP_PROJECT" ]] || { echo "::error::Missing secret GCP_PROJECT"; missing=1; }
           [[ -n "$GCP_SA_KEY" ]] || { echo "::error::Missing secret GCP_SA_KEY"; missing=1; }
           if [[ $missing -ne 0 ]]; then
+            echo "See docs/GITHUB-ACTIONS-SETUP.md"
             exit 1
           fi
 

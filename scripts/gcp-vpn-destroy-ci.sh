@@ -12,6 +12,8 @@ TF_DIR="${REPO_ROOT}/vpn-gateways-gcp"
 
 export SKIP_AUTH=1
 export FORCE_TFVARS="${FORCE_TFVARS:-1}"
+export SSH_PUBLIC_KEY="${SSH_PUBLIC_KEY:-ssh-ed25519 placeholder}"
+export ADMIN_CIDR="${ADMIN_CIDR:-0.0.0.0/0}"
 
 : "${GCP_PROJECT:?Set GCP_PROJECT}"
 

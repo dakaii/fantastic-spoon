@@ -44,6 +44,11 @@ vpn_iface_name() {
   echo "${client}-${city}"
 }
 
+vpn_iface_up() {
+  local iface="$1"
+  sudo wg show "$iface" &>/dev/null
+}
+
 cmd_up() {
   local city="$1" client="$2"
   local src iface dir installed
@@ -64,10 +69,8 @@ cmd_up() {
   installed="${dir}/${iface}.conf"
   sudo install -m 600 "$src" "$installed"
 
-  if sudo wg show 2>/dev/null | grep -q "interface:"; then
-    if sudo wg show 2>/dev/null | grep -q "latest handshake"; then
-      log "Tunnel may already be up — see status below"
-    fi
+  if vpn_iface_up "$iface"; then
+    log "Tunnel already up (${iface})"
   else
     log "Bringing up ${iface} from ${installed}"
     sudo wg-quick up "$iface"
@@ -118,6 +121,8 @@ cmd_down() {
 }
 
 cmd_status() {
+  local gw_ip gw_port
+
   if sudo wg show 2>/dev/null | grep -q .; then
     sudo wg show
   else
@@ -126,22 +131,33 @@ cmd_status() {
   fi
 
   if [[ -d "${REPO_ROOT}/vpn-gateways-gcp" ]] && [[ -f "${REPO_ROOT}/vpn-gateways-gcp/terraform.tfstate" || -d "${REPO_ROOT}/vpn-gateways-gcp/terraform.tfstate.d" ]]; then
-    ip="$(terraform -chdir="${REPO_ROOT}/vpn-gateways-gcp" output -raw vpn_public_ip 2>/dev/null || true)"
-    [[ -n "$ip" ]] && echo "Gateway endpoint: ${ip}:$(terraform -chdir="${REPO_ROOT}/vpn-gateways-gcp" output -raw wireguard_port 2>/dev/null || echo 51820)"
+    gw_ip="$(terraform -chdir="${REPO_ROOT}/vpn-gateways-gcp" output -raw vpn_public_ip 2>/dev/null || true)"
+    gw_port="$(terraform -chdir="${REPO_ROOT}/vpn-gateways-gcp" output -raw wireguard_port 2>/dev/null || echo 51820)"
+    [[ -n "$gw_ip" ]] && echo "Gateway endpoint: ${gw_ip}:${gw_port}"
   fi
 }
 
 cmd_ip() {
+  local egress
+
   if ! sudo wg show 2>/dev/null | grep -q "latest handshake"; then
     echo "ERROR: tunnel not up — run: ./scripts/vpn.sh up" >&2
     exit 1
   fi
-  curl -4 --connect-timeout 15 -s ifconfig.me || {
-    echo "WARN: ifconfig.me failed; trying 1.1.1.1 reachability" >&2
-    ping -c 2 1.1.1.1
-    exit 1
-  }
-  echo ""
+
+  for egress in \
+    "https://ifconfig.me" \
+    "https://api.ipify.org" \
+    "https://icanhazip.com"; do
+    if egress="$(curl -4 --connect-timeout 10 -s --retry 2 "$egress" 2>/dev/null)" && [[ -n "$egress" ]]; then
+      echo "$egress"
+      return 0
+    fi
+  done
+
+  echo "WARN: could not resolve public IP (DNS or egress issue)" >&2
+  echo "Try: dig +short ifconfig.me @1.1.1.1" >&2
+  exit 1
 }
 
 cmd_deploy() {
