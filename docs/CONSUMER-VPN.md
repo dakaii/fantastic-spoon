@@ -112,10 +112,10 @@ Alerts (once scraped):
 
 | Phase | Outcome |
 |-------|---------|
-| **V1** (done + this pass) | Single-city full tunnel; exporters + scrape/alerts docs |
+| **V1** (done) | Single-city full tunnel; exporters + scrape/alerts docs |
+| **V1.1** (this) | **Multi-peer** — laptop + phone + friends on one city exit |
 | **V2** | Second city; switch profile → different egress IP |
-| **V3** | Multi-peer (family/friends); rate/abuse notes; DNS names `vpn-us.<domain>` |
-| **V4** | Optional: platform UIs only on VPN via Traefik allowlists |
+| **V3** | Rate/abuse notes; DNS names `vpn-us.<domain>`; optional Traefik allowlists |
 
 ---
 
@@ -137,13 +137,17 @@ cd vpn-gateways-gcp && cp terraform.tfvars.example terraform.tfvars
 # set gcp_project, ssh_public_key, admin_cidr
 terraform init && terraform apply
 
-# 2. WireGuard + exporters + client conf
+# 2. WireGuard + exporters + first peer (laptop)
 cd .. && ./scripts/vpn-bootstrap.sh
 
 # 3. Import vpn-clients/us/laptop-us.conf → WireGuard app → Activate
 curl -4 ifconfig.me   # expect terraform output vpn_public_ip
 
-# 4. Hook metrics into platform Prometheus
+# 4. Add more devices
+./scripts/vpn-peer-add.sh us phone --apply
+./scripts/vpn-peer-list.sh us
+
+# 5. Hook metrics into platform Prometheus
 ./scripts/vpn-prometheus-scrape-snippet.sh
 # follow printed instructions / docs/MONITORING.md
 ```

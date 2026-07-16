@@ -43,6 +43,12 @@ CONF="${REPO_ROOT}/vpn-clients/${CITY}/laptop-${CITY}.conf"
 if [[ -f "$CONF" ]]; then
   mkdir -p "${REPO_ROOT}/tmp/vpn-artifact"
   cp "$CONF" "${REPO_ROOT}/tmp/vpn-artifact/"
+  # Also pack any extra peer configs generated in CI (usually just laptop)
+  shopt -s nullglob
+  for extra in "${REPO_ROOT}/vpn-clients/${CITY}"/*-"${CITY}".conf; do
+    cp "$extra" "${REPO_ROOT}/tmp/vpn-artifact/" 2>/dev/null || true
+  done
+  shopt -u nullglob
   # Public endpoint only — do not print private keys
   log "Client config ready for artifact upload: tmp/vpn-artifact/$(basename "$CONF")"
   terraform -chdir="${REPO_ROOT}/vpn-gateways-gcp" output -raw vpn_public_ip || true

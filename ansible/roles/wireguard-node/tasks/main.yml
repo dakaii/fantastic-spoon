@@ -29,16 +29,18 @@
   register: wg_uplink
   changed_when: false
 
-- name: Fail if WireGuard keys were not provided
+- name: Fail if WireGuard keys / peers were not provided
   ansible.builtin.assert:
     that:
       - wg_server_private_key is defined
       - wg_server_private_key | length > 0
-      - wg_client_public_key is defined
-      - wg_client_public_key | length > 0
+      - >
+          (wg_peers is defined and wg_peers | length > 0)
+          or
+          (wg_client_public_key is defined and wg_client_public_key | length > 0)
     fail_msg: >-
-      Missing wg_server_private_key / wg_client_public_key.
-      Run ./scripts/vpn-bootstrap.sh (or pass -e from vpn-clients/).
+      Provide wg_peers (multi-peer) via ./scripts/vpn-apply-peers.sh,
+      or legacy wg_client_public_key. Run ./scripts/vpn-bootstrap.sh first.
 
 - name: Write WireGuard interface config
   ansible.builtin.template:

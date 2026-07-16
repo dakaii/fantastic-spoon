@@ -4,28 +4,46 @@
 # Usage:
 #   ./scripts/generate-wg-client-config.sh <city> [client-name]
 #
-# Expects vpn-clients/<city>/ to contain:
-#   server.publickey, client.privatekey, client.publickey
-# And endpoint IP via VPN_ENDPOINT or terraform output.
+# Prefers vpn-clients/<city>/peers/<name>.* (multi-peer).
+# Falls back to legacy client.privatekey for name=laptop.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+export REPO_ROOT
+# shellcheck source=vpn-peers-lib.sh
+# shellcheck disable=SC1091
+source "$(dirname "$0")/vpn-peers-lib.sh"
+
 CITY="${1:?Usage: generate-wg-client-config.sh <city> [client-name]}"
 CLIENT_NAME="${2:-laptop}"
-DIR="${REPO_ROOT}/vpn-clients/${CITY}"
-PORT="${WIREGUARD_PORT:-51820}"
+DIR="$(vpn_peers_city_dir "$CITY")"
+PEERS="$(vpn_peers_dir "$CITY")"
+PORT="${WIREGUARD_PORT:-$(vpn_peers_tf_port)}"
 
-need() { [[ -f "$1" ]] || { echo "ERROR: missing $1 — run vpn-bootstrap.sh first" >&2; exit 1; }; }
+vpn_peers_migrate_legacy "$CITY"
 
-need "${DIR}/server.publickey"
-need "${DIR}/client.privatekey"
+PRIV=""
+PUB_SERVER="${DIR}/server.publickey"
+ADDR=""
 
-if [[ -n "${VPN_ENDPOINT:-}" ]]; then
-  ENDPOINT="$VPN_ENDPOINT"
-elif [[ -d "${REPO_ROOT}/vpn-gateways-gcp" ]] && [[ -f "${REPO_ROOT}/vpn-gateways-gcp/terraform.tfstate" || -d "${REPO_ROOT}/vpn-gateways-gcp/terraform.tfstate.d" ]]; then
-  ENDPOINT="$(terraform -chdir="${REPO_ROOT}/vpn-gateways-gcp" output -raw vpn_public_ip 2>/dev/null || true)"
+if [[ -f "${PEERS}/${CLIENT_NAME}.privatekey" ]]; then
+  PRIV="${PEERS}/${CLIENT_NAME}.privatekey"
+  ADDR="$(cat "${PEERS}/${CLIENT_NAME}.address")"
+elif [[ "$CLIENT_NAME" == "laptop" && -f "${DIR}/client.privatekey" ]]; then
+  PRIV="${DIR}/client.privatekey"
+  ADDR="${WG_CLIENT_ADDRESS:-10.66.0.2/32}"
+else
+  echo "ERROR: missing peer keys for '${CLIENT_NAME}'" >&2
+  echo "  Add with: ./scripts/vpn-peer-add.sh ${CITY} ${CLIENT_NAME}" >&2
+  exit 1
 fi
 
+[[ -f "$PUB_SERVER" ]] || {
+  echo "ERROR: missing $PUB_SERVER — run vpn-bootstrap.sh first" >&2
+  exit 1
+}
+
+ENDPOINT="${VPN_ENDPOINT:-$(vpn_peers_tf_endpoint)}"
 [[ -n "${ENDPOINT:-}" ]] || {
   echo "ERROR: Set VPN_ENDPOINT=<public-ip> or apply vpn-gateways-gcp first" >&2
   exit 1
@@ -46,16 +64,16 @@ cat >"$OUT" <<EOF
 # Import into the official WireGuard app (macOS/iOS/Android/Linux).
 
 [Interface]
-PrivateKey = $(cat "${DIR}/client.privatekey")
-Address = ${WG_CLIENT_ADDRESS:-10.66.0.2/32}
+PrivateKey = $(cat "$PRIV")
+Address = ${ADDR}
 DNS = ${WG_DNS:-1.1.1.1}
 
 [Peer]
-PublicKey = $(cat "${DIR}/server.publickey")
+PublicKey = $(cat "$PUB_SERVER")
 Endpoint = ${ENDPOINT}:${PORT}
 AllowedIPs = ${ALLOWED}
 PersistentKeepalive = 25
 EOF
 
 echo "Wrote ${OUT}"
-echo "Endpoint ${ENDPOINT}:${PORT}  AllowedIPs=${ALLOWED}"
+echo "Endpoint ${ENDPOINT}:${PORT}  Address=${ADDR}  AllowedIPs=${ALLOWED}"
