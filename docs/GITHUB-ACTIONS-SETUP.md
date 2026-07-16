@@ -129,13 +129,30 @@ Then follow [PHASE-4-RUNBOOK.md](PHASE-4-RUNBOOK.md) for NS delegation and
 
 ### VPN V1 (WireGuard city gateway) — no local login
 
+**Deploy:**
+
 ```bash
 gh workflow run gcp-vpn.yml -R dakaii/fantastic-spoon -f city=us
 gh run watch -R dakaii/fantastic-spoon
 ```
 
-Download the **wireguard-client-us** artifact from the run, import the `.conf`
-into the official WireGuard app. See [VPN-RUNBOOK.md](VPN-RUNBOOK.md).
+Download the **wireguard-client-us** artifact, copy `laptop-us.conf` to
+`vpn-clients/us/`, then connect with CLI:
+
+```bash
+./scripts/vpn.sh up
+./scripts/vpn.sh ip
+./scripts/vpn.sh down
+```
+
+See [VPN-RUNBOOK.md](VPN-RUNBOOK.md).
+
+**Destroy VPN only** (keeps primary/standby):
+
+```bash
+gh workflow run gcp-vpn-destroy.yml -R dakaii/fantastic-spoon
+gh run watch -R dakaii/fantastic-spoon
+```
 
 ### Full deploy (greenfield or re-deploy)
 

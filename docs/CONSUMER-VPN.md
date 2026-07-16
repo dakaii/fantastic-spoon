@@ -141,6 +141,7 @@ terraform init && terraform apply
 cd .. && ./scripts/vpn-bootstrap.sh
 
 # 3. Import vpn-clients/us/laptop-us.conf → WireGuard app → Activate
+#    Or CLI (no GUI): ./scripts/vpn.sh up && ./scripts/vpn.sh ip
 curl -4 ifconfig.me   # expect terraform output vpn_public_ip
 
 # 4. Add more devices
@@ -152,4 +153,9 @@ curl -4 ifconfig.me   # expect terraform output vpn_public_ip
 # follow printed instructions / docs/MONITORING.md
 ```
 
-GitHub Actions: `gh workflow run gcp-vpn.yml -f city=us`
+GitHub Actions:
+
+```bash
+gh workflow run gcp-vpn.yml -R dakaii/fantastic-spoon -f city=us
+gh workflow run gcp-vpn-destroy.yml -R dakaii/fantastic-spoon   # VPN only
+```
