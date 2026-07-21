@@ -50,12 +50,15 @@ jobs:
         with:
           terraform_version: "~> 1.5"
 
-      - name: Install Ansible, jq, wireguard-tools
+      - name: Install Ansible, jq, wireguard-tools, helm, kubectl
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq jq wireguard-tools
+          sudo apt-get install -y -qq jq wireguard-tools curl
           pip install ansible
           ansible-galaxy collection install -r ansible/requirements.yml
+          curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+          curl -fsSL "https://dl.k8s.io/release/$(curl -fsSL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
+            -o /tmp/kubectl && sudo install -m 0755 /tmp/kubectl /usr/local/bin/kubectl
 
       - name: Configure SSH key for Ansible
         env:
@@ -65,7 +68,7 @@ jobs:
           printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
 
-      - name: Provision VPN gateway + WireGuard
+      - name: Provision VPN gateway + WireGuard + monitoring wire
         env:
           GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
           SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
@@ -81,4 +84,12 @@ jobs:
           name: wireguard-client-${{ inputs.city }}
           path: tmp/vpn-artifact/
           if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload Prometheus scrape values artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vpn-prometheus-scrape-${{ inputs.city }}
+          path: tmp/vpn-additional-scrape.yaml
+          if-no-files-found: warn
           retention-days: 7

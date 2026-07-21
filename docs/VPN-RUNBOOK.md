@@ -81,13 +81,20 @@ WG_FULL_TUNNEL=0 WG_ALLOWED_IPS=10.66.0.0/24 \
 
 ## Hook into platform monitoring
 
+**Automatic** after `./scripts/gcp-deploy.sh vpn` or **GCP VPN** GHA:
+
+```bash
+./scripts/vpn-monitoring-wire.sh
+```
+
+That sets `vpn_metrics_cidrs` from primary public NATs, writes the scrape snippet, and
+(when kubeconfig works) helm-upgrades Prometheus + applies GitOps VPN alerts/dashboard.
+
+Manual pieces (if needed):
+
 ```bash
 ./scripts/vpn-prometheus-scrape-snippet.sh
 ```
-
-Add the printed scrape jobs to kube-prometheus-stack (see
-[MONITORING.md](MONITORING.md#consumer-vpn-gateway)). Sync GitOps monitoring so
-`prometheus-rules-vpn` and the VPN Grafana dashboard are present.
 
 Ensure `vpn_metrics_cidrs` allows scrapes from the **source IP Prometheus uses** when
 it dials the gateway (not your WireGuard client IP, and not related to port-forward):
@@ -98,8 +105,7 @@ it dials the gateway (not your WireGuard client IP, and not related to port-forw
 | Your laptop (local Prometheus) | Your public IP `/32` |
 
 `kubectl port-forward` to Grafana is only for **viewing dashboards** — it does not
-change scrape egress. If `admin_cidr = "0.0.0.0/0"`, set `vpn_metrics_cidrs` explicitly
-or metrics `:9100` inherits the open SSH range. See [MONITORING.md](MONITORING.md#consumer-vpn-gateway).
+change scrape egress. See [MONITORING.md](MONITORING.md#consumer-vpn-gateway).
 
 ## Multi-peer clients (laptop + phone + …)
 

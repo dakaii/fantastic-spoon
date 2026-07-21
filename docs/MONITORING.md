@@ -159,14 +159,18 @@ you set `vpn_metrics_cidrs` explicitly. Prefer a tight list:
 vpn_metrics_cidrs = ["34.x.x.x/32", "34.y.y.y/32"]   # from primary_public_ips
 ```
 
-### 2. Generate scrape snippet
+### 2. Generate scrape snippet (or use auto-wire)
 
 ```bash
+# Preferred — firewall CIDRs + helm + GitOps in one step:
+./scripts/vpn-monitoring-wire.sh
+
+# Or snippet only:
 ./scripts/vpn-prometheus-scrape-snippet.sh
 # writes / prints additionalScrapeConfigs YAML
 ```
 
-Merge into kube-prometheus-stack values, for example:
+Merge into kube-prometheus-stack values (if not using the wire script), for example:
 
 ```bash
 helm upgrade kube-prometheus-stack prometheus-community/kube-prometheus-stack \
