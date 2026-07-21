@@ -33,26 +33,30 @@ if [[ -z "${VPN_METRICS_CIDRS:-}" ]]; then
   _cidrs=()
   while IFS= read -r _c; do
     [[ -n "$_c" ]] && _cidrs+=("$_c")
-  done < <("${REPO_ROOT}/scripts/vpn-discover-metrics-cidrs.sh" 2>/dev/null || true)
+  done < <("${REPO_ROOT}/scripts/vpn-discover-metrics-cidrs.sh" || true)
   if [[ ${#_cidrs[@]} -gt 0 ]]; then
     VPN_METRICS_CIDRS="$(IFS=,; echo "${_cidrs[*]}")"
     export VPN_METRICS_CIDRS
     log "VPN_METRICS_CIDRS=${VPN_METRICS_CIDRS}"
+  elif [[ "${ADMIN_CIDR}" == "0.0.0.0/0" ]]; then
+    echo "ERROR: could not discover primary NAT IPs and ADMIN_CIDR is 0.0.0.0/0." >&2
+    echo "  Metrics :9100 would be world-reachable. Deploy/bootstrap primary first, or set:" >&2
+    echo "  VPN_METRICS_CIDRS=34.x.x.x/32,34.y.y.y/32" >&2
+    exit 1
+  else
+    log "WARN: no primary CIDRs discovered — vpn_metrics_cidrs will default to admin_cidr=${ADMIN_CIDR}"
   fi
 fi
 
 log "Writing terraform.tfvars"
 "${REPO_ROOT}/scripts/gcp-deploy.sh" init
 
-log "VPN provision + WireGuard bootstrap"
+log "VPN provision + WireGuard bootstrap (+ monitoring wire)"
 export SKIP_AUTH=1
 "${REPO_ROOT}/scripts/gcp-deploy.sh" vpn
 
-log "Pushing Terraform state to GCS"
+log "Pushing Terraform state to GCS (includes any vpn_metrics_cidrs apply)"
 "${REPO_ROOT}/scripts/gcp-tfstate-sync.sh" push
-
-log "Wire VPN monitoring (scrape + GitOps rules)"
-"${REPO_ROOT}/scripts/vpn-monitoring-wire.sh" || log "WARN: monitoring wire incomplete"
 
 CITY="$VPN_CITY"
 CONF="${REPO_ROOT}/vpn-clients/${CITY}/laptop-${CITY}.conf"

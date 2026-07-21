@@ -38,11 +38,11 @@ if [[ -n "${VPN_METRICS_CIDRS:-}" ]]; then
 else
   while IFS= read -r line; do
     [[ -n "$line" ]] && CIDR_LIST+=("$line")
-  done < <("${REPO_ROOT}/scripts/vpn-discover-metrics-cidrs.sh" 2>/dev/null || true)
+  done < <("${REPO_ROOT}/scripts/vpn-discover-metrics-cidrs.sh" || true)
 fi
 
 if [[ ${#CIDR_LIST[@]} -eq 0 ]]; then
-  log "No primary CIDRs — leaving vpn_metrics_cidrs unchanged (defaults to admin_cidr)"
+  log "WARN: no primary CIDRs discovered — leaving vpn_metrics_cidrs unchanged (defaults to admin_cidr)"
 else
   log "Metrics allowlist: ${CIDR_LIST[*]}"
   # Build HCL list
@@ -67,10 +67,9 @@ else
     fi
     log "Updated ${TFVARS}"
   else
-    export VPN_METRICS_CIDRS
-    # Comma form for gcp-deploy init
-    VPN_METRICS_CIDRS="$(IFS=,; echo "${CIDR_LIST[*]}")"
-    export VPN_METRICS_CIDRS
+    # No tfvars yet — still apply CIDRs via TF_VAR (HCL list)
+    export TF_VAR_vpn_metrics_cidrs="${hcl}"
+    log "No terraform.tfvars — using TF_VAR_vpn_metrics_cidrs=${hcl}"
   fi
 
   log "Applying VPN firewall (vpn_metrics_cidrs)"
@@ -140,14 +139,23 @@ if ! kubectl get ns monitoring >/dev/null 2>&1; then
   exit 0
 fi
 
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts >/dev/null 2>&1 || true
-helm repo update prometheus-community >/dev/null 2>&1 || true
+# Pin to the chart version already installed — avoid upgrading the whole stack on VPN deploy
+CHART_VER="$(helm list -n monitoring -o json 2>/dev/null \
+  | jq -r '.[] | select(.name=="kube-prometheus-stack") | .chart' 2>/dev/null \
+  | sed -n 's/.*-\([0-9.]*\)$/\1/p' || true)"
 
-log "Helm upgrade kube-prometheus-stack (VPN scrape)"
-helm upgrade kube-prometheus-stack prometheus-community/kube-prometheus-stack \
-  -n monitoring \
-  -f "$SCRAPE_FILE" \
-  --reuse-values
+if [[ -z "$CHART_VER" ]]; then
+  log "WARN: kube-prometheus-stack not found or chart version unknown — scrape file at ${SCRAPE_FILE}; skip helm"
+else
+  helm repo add prometheus-community https://prometheus-community.github.io/helm-charts >/dev/null 2>&1 || true
+  helm repo update prometheus-community >/dev/null 2>&1 || true
+  log "Helm upgrade kube-prometheus-stack (VPN scrape, chart ${CHART_VER})"
+  helm upgrade kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+    -n monitoring \
+    --version "$CHART_VER" \
+    -f "$SCRAPE_FILE" \
+    --reuse-values
+fi
 
 log "Apply GitOps monitoring (VPN rules + dashboard)"
 kubectl apply -k "${REPO_ROOT}/gitops/infrastructure/primary/monitoring/"
