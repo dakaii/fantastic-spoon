@@ -99,7 +99,7 @@ ensure_kubeconfig() {
   local inv="${REPO_ROOT}/ansible/inventory/primary-hosts.yml"
   local cp_ip=""
   if [[ -f "$inv" ]]; then
-    # shellcheck source=inventory-utils.sh
+    # shellcheck source=scripts/inventory-utils.sh disable=SC1091
     source "${REPO_ROOT}/scripts/inventory-utils.sh"
     cp_ip="$(inventory_first_control_plane_ip "$inv" 2>/dev/null || true)"
   fi
