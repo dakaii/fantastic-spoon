@@ -1,5 +1,6 @@
 # Destroy VPN gateway only (vpn-gateways-gcp). Primary/standby clusters are untouched.
-# See docs/VPN-RUNBOOK.md
+# Requires GitHub Environment "gcp-destroy" (same approval gate as full destroy).
+# See docs/VPN-RUNBOOK.md and docs/GITHUB-ACTIONS-SETUP.md
 
 name: GCP VPN Destroy
 
@@ -16,6 +17,7 @@ jobs:
   destroy-vpn:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    environment: gcp-destroy
     steps:
       - name: Check required secrets
         env:
@@ -50,5 +52,6 @@ jobs:
         run: |
           chmod +x scripts/*.sh
           export SSH_PUBLIC_KEY="${SSH_PUBLIC_KEY:-ssh-ed25519 placeholder}"
-          export ADMIN_CIDR="${ADMIN_CIDR:-0.0.0.0/0}"
+          # Placeholder only — never invent world-open SSH for destroy tfvars
+          export ADMIN_CIDR="${ADMIN_CIDR:-127.0.0.1/32}"
           ./scripts/gcp-vpn-destroy-ci.sh

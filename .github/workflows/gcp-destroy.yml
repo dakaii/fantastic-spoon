@@ -1,7 +1,8 @@
 # Destroy all Terraform-managed resources in the GCP project
 # Does NOT delete the GCP project unless delete_project input is true
 # Prefer: GCP_PROJECT=... ./scripts/gcp-teardown.sh --gha --watch (pushes local state first)
-# See docs/GITHUB-ACTIONS-SETUP.md — recommend GitHub Environment approval for this workflow
+# Requires GitHub Environment "gcp-destroy" (Settings → Environments → Required reviewers)
+# See docs/GITHUB-ACTIONS-SETUP.md
 
 name: GCP Destroy
 
@@ -18,6 +19,7 @@ jobs:
   destroy:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    environment: gcp-destroy
     steps:
       - name: Check required secrets
         env:
@@ -54,7 +56,8 @@ jobs:
           export FORCE_TFVARS=1
           export SKIP_AUTH=1
           SSH_PUBLIC_KEY="${SSH_PUBLIC_KEY:-ssh-ed25519 placeholder}"
-          ADMIN_CIDR="${ADMIN_CIDR:-0.0.0.0/0}"
+          # Placeholder only so init can write tfvars — never invent world-open SSH
+          ADMIN_CIDR="${ADMIN_CIDR:-127.0.0.1/32}"
           ./scripts/gcp-deploy.sh init
 
       - name: Pre-check (VMs vs Terraform state)

@@ -99,7 +99,7 @@ if [[ "$MODE" == "local" ]]; then
     log "Writing missing terraform.tfvars via gcp-deploy.sh init"
     export FORCE_TFVARS=1
     export SSH_PUBLIC_KEY="${SSH_PUBLIC_KEY:-$(cat "${HOME}/.ssh/id_ed25519.pub" 2>/dev/null || echo "ssh-ed25519 placeholder")}"
-    export ADMIN_CIDR="${ADMIN_CIDR:-0.0.0.0/0}"
+    export ADMIN_CIDR="${ADMIN_CIDR:-127.0.0.1/32}"
     "${REPO_ROOT}/scripts/gcp-deploy.sh" init
   fi
 fi

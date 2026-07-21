@@ -4,6 +4,7 @@
 # See docs/GITHUB-ACTIONS-SETUP.md
 #
 # Secrets: GCP_PROJECT, GCP_SA_KEY, SSH_PRIVATE_KEY
+# Optional: GRAFANA_ADMIN_PASSWORD (primary — else bootstrap generates + masks)
 # Optional: SSH_PUBLIC_KEY, ADMIN_CIDR (for full infra workflow only)
 
 name: GCP Bootstrap
@@ -75,6 +76,8 @@ jobs:
           ./scripts/validate-inventory.sh "ansible/inventory/${{ inputs.cluster }}-hosts.yml"
 
       - name: Bootstrap cluster (Ansible)
+        env:
+          GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
         run: ./scripts/bootstrap-cluster.sh "${{ inputs.cluster }}"
 
       - name: Upload inventory artifact

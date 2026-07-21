@@ -172,30 +172,55 @@ if [[ "$PUSH_SECRETS" -eq 1 ]]; then
     gh secret set SSH_PUBLIC_KEY < "${SSH_KEY}.pub" -R "$GITHUB_REPO"
   fi
 
-  ADMIN_CIDR="${ADMIN_CIDR:-0.0.0.0/0}"
+  if [[ -z "${ADMIN_CIDR:-}" ]]; then
+    _ip="$(curl -4 -fsS --max-time 5 ifconfig.me 2>/dev/null || true)"
+    if [[ -n "$_ip" ]]; then
+      ADMIN_CIDR="${_ip}/32"
+      log "ADMIN_CIDR unset — seeded GitHub secret with detected ${ADMIN_CIDR}"
+      log "WARN: GitHub-hosted runners use dynamic IPs. For GHA bootstrap/deploy you may need"
+      log "      ADMIN_CIDR=0.0.0.0/0 temporarily (lab only), then tighten. See GITHUB-ACTIONS-SETUP.md"
+    else
+      die "Set ADMIN_CIDR=YOUR.IP/32 before --push-secrets (lab/GHA only: ADMIN_CIDR=0.0.0.0/0)"
+    fi
+  fi
+  if [[ "$ADMIN_CIDR" == "0.0.0.0/0" ]]; then
+    log "WARN: ADMIN_CIDR=0.0.0.0/0 leaves SSH world-open. Keep vpn_metrics_cidrs set (VPN deploy auto-wires)."
+  fi
   gh secret set ADMIN_CIDR -b "$ADMIN_CIDR" -R "$GITHUB_REPO"
 
-  log "GitHub secrets updated: GCP_PROJECT, GCP_SA_KEY, SSH_PRIVATE_KEY, ADMIN_CIDR"
+  if [[ -n "${GRAFANA_ADMIN_PASSWORD:-}" ]]; then
+    gh secret set GRAFANA_ADMIN_PASSWORD -b "$GRAFANA_ADMIN_PASSWORD" -R "$GITHUB_REPO"
+    log "GitHub secrets updated: GCP_PROJECT, GCP_SA_KEY, SSH_*, ADMIN_CIDR, GRAFANA_ADMIN_PASSWORD"
+  else
+    log "GitHub secrets updated: GCP_PROJECT, GCP_SA_KEY, SSH_*, ADMIN_CIDR"
+    log "Optional: GRAFANA_ADMIN_PASSWORD=... $0 --push-secrets  (else bootstrap generates one)"
+  fi
 else
   echo "Push secrets manually (or re-run with --push-secrets):"
   echo ""
   echo "  gh secret set GCP_PROJECT -b \"${GCP_PROJECT}\" -R ${GITHUB_REPO}"
   echo "  gh secret set GCP_SA_KEY    < \"${KEY_FILE}\" -R ${GITHUB_REPO}"
   echo "  gh secret set SSH_PRIVATE_KEY < \"${SSH_KEY}\" -R ${GITHUB_REPO}"
+  echo "  gh secret set ADMIN_CIDR -b \"YOUR.IP/32\" -R ${GITHUB_REPO}"
+  echo "  # optional: gh secret set GRAFANA_ADMIN_PASSWORD -b '...' -R ${GITHUB_REPO}"
   echo ""
 fi
 
 echo "========================================"
-echo " One more step: SSH firewall"
+echo " SSH firewall for GitHub runners"
 echo "========================================"
 echo ""
-echo "GitHub runners need SSH access to your VMs. Easiest for dev:"
+echo "GitHub-hosted runners have dynamic egress IPs. Options:"
 echo ""
-echo "  1. Edit primary-cluster-gcp/terraform.tfvars"
-echo "       admin_cidr = \"0.0.0.0/0\""
-echo "  2. cd primary-cluster-gcp && terraform apply"
+echo "  A) Lab only — temporarily open SSH, then tighten:"
+echo "       admin_cidr = \"0.0.0.0/0\"   # temporary"
+echo "       cd primary-cluster-gcp && terraform apply"
+echo "     Prefer vpn_metrics_cidrs for :9100 (VPN deploy auto-wires; do not leave metrics on 0.0.0.0/0)."
 echo ""
-echo "Then run bootstrap from GitHub:"
+echo "  B) Locked down — set admin_cidr to your IP/32 and bootstrap from a machine on that IP"
+echo "     (local ./scripts/bootstrap-cluster.sh), not from GitHub-hosted runners."
+echo ""
+echo "Then run bootstrap from GitHub (if using A):"
 echo "  Actions → GCP Bootstrap → Run workflow → cluster: primary"
 echo ""
-echo "See docs/GITHUB-ACTIONS-SETUP.md for details."
+echo "See docs/GITHUB-ACTIONS-SETUP.md for Environment approval on Destroy."
