@@ -28,6 +28,19 @@ gcloud config set project "$GCP_PROJECT"
 log "Pulling Terraform state from GCS (if any)"
 "${REPO_ROOT}/scripts/gcp-tfstate-sync.sh" pull
 
+# Discover primary NAT CIDRs before writing tfvars (so :9100 is not world-open via admin_cidr)
+if [[ -z "${VPN_METRICS_CIDRS:-}" ]]; then
+  _cidrs=()
+  while IFS= read -r _c; do
+    [[ -n "$_c" ]] && _cidrs+=("$_c")
+  done < <("${REPO_ROOT}/scripts/vpn-discover-metrics-cidrs.sh" 2>/dev/null || true)
+  if [[ ${#_cidrs[@]} -gt 0 ]]; then
+    VPN_METRICS_CIDRS="$(IFS=,; echo "${_cidrs[*]}")"
+    export VPN_METRICS_CIDRS
+    log "VPN_METRICS_CIDRS=${VPN_METRICS_CIDRS}"
+  fi
+fi
+
 log "Writing terraform.tfvars"
 "${REPO_ROOT}/scripts/gcp-deploy.sh" init
 
@@ -37,6 +50,9 @@ export SKIP_AUTH=1
 
 log "Pushing Terraform state to GCS"
 "${REPO_ROOT}/scripts/gcp-tfstate-sync.sh" push
+
+log "Wire VPN monitoring (scrape + GitOps rules)"
+"${REPO_ROOT}/scripts/vpn-monitoring-wire.sh" || log "WARN: monitoring wire incomplete"
 
 CITY="$VPN_CITY"
 CONF="${REPO_ROOT}/vpn-clients/${CITY}/laptop-${CITY}.conf"

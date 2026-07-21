@@ -158,49 +158,22 @@ gh workflow run gcp-vpn-destroy.yml -R dakaii/fantastic-spoon
 gh run watch -R dakaii/fantastic-spoon
 ```
 
-#### After VPN deploy — hook up monitoring (manual, ~5 min)
+#### After VPN deploy — monitoring (usually automatic)
 
-Consumer VPN is **not** how you access Grafana. These steps wire **Prometheus → gateway
-metrics** (`:9100`) so ops can see gateway health in the existing k3s stack.
+`gcp-vpn.yml` / `./scripts/gcp-deploy.sh vpn` now run `./scripts/vpn-monitoring-wire.sh`:
 
-1. **Tighten metrics firewall** — if `admin_cidr = "0.0.0.0/0"` (common for GHA), metrics
-   inherit that unless you set `vpn_metrics_cidrs` explicitly. Add only scraper IPs:
+1. Discover primary node NAT IPs → set `vpn_metrics_cidrs` (avoids inheriting `0.0.0.0/0`)
+2. Generate scrape values (`tmp/vpn-additional-scrape.yaml`)
+3. Helm-upgrade kube-prometheus-stack + apply GitOps VPN rules/dashboard (when primary kubeconfig/SSH works)
 
-   ```hcl
-   # vpn-gateways-gcp/terraform.tfvars
-   # List every primary node NAT that might run the Prometheus pod (CP + workers):
-   #   terraform -chdir=primary-cluster-gcp output -json primary_public_ips
-   vpn_metrics_cidrs = [
-     "34.x.x.x/32",
-     "34.y.y.y/32",
-   ]
-   ```
+Manual re-wire anytime:
 
-   Apply locally (do **not** re-run **GCP VPN** for this — that workflow sets
-   `FORCE_TFVARS=1` and regenerates tfvars **without** `vpn_metrics_cidrs`):
+```bash
+./scripts/vpn-monitoring-wire.sh
+```
 
-   ```bash
-   terraform -chdir=vpn-gateways-gcp apply
-   GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-tfstate-sync.sh push
-   ```
-
-2. **Generate Prometheus scrape config:**
-
-   ```bash
-   ./scripts/vpn-prometheus-scrape-snippet.sh
-   ```
-
-3. **Merge into kube-prometheus-stack** (see [MONITORING.md](MONITORING.md#consumer-vpn-gateway)).
-
-4. **Sync GitOps rules + dashboard:**
-
-   ```bash
-   kubectl apply -k gitops/infrastructure/primary/monitoring/
-   ```
-
-5. **Open Grafana** (no VPN required): `kubectl port-forward svc/kube-prometheus-stack-grafana -n monitoring 3000:80`
-
-Full detail: [VPN-RUNBOOK.md](VPN-RUNBOOK.md#hook-into-platform-monitoring), [CONSUMER-VPN.md](CONSUMER-VPN.md).
+If primary was down during VPN deploy, re-run the wire script after bootstrap. Artifact
+`vpn-prometheus-scrape-<city>` is also uploaded from GHA.
 
 ### Full deploy (greenfield or re-deploy)
 
