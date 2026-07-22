@@ -21,7 +21,7 @@ Deep dives: [CONSUMER-VPN.md](CONSUMER-VPN.md) · [VPN-RUNBOOK.md](VPN-RUNBOOK.m
 | VPN city (`us`) | GHA **GCP VPN** or `./scripts/vpn-bootstrap.sh` — client conf under `vpn-clients/us/` |
 | Monitoring wired | VPN deploy runs `vpn-monitoring-wire.sh`; confirm scrape if primary was already up |
 | Auth | Same Google account for `gcloud` **and** ADC (`gcloud auth application-default login`). Use `GCP_ACCOUNT=you@gmail.com` locally — **no email in git** |
-| Grafana password | `GRAFANA_ADMIN_PASSWORD` secret, or `tmp/grafana-admin-password` from bootstrap |
+| Grafana password | See [MONITORING.md](MONITORING.md) (rotate off the Ansible default before demos) |
 | Optional Phase 4 | Witness (+ DNS if you have a domain) — [PHASE-4-RUNBOOK.md](PHASE-4-RUNBOOK.md) |
 
 Smoke check:
@@ -71,7 +71,7 @@ terraform -chdir=vpn-gateways-gcp output -raw vpn_public_ip
 
 ```bash
 kubectl port-forward svc/kube-prometheus-stack-grafana -n monitoring 3000:80
-# http://localhost:3000  user admin  password from GRAFANA_ADMIN_PASSWORD / tmp file
+# http://localhost:3000  user admin — password in MONITORING.md (change before demos)
 ```
 
 Open **Hybrid K8s Platform Overview** and **Consumer VPN Gateway**. Point out:
@@ -152,7 +152,7 @@ GCP_PROJECT=hybrid-k8s-dev ./setup.sh destroy
 # or: GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-teardown.sh --gha --watch
 ```
 
-GHA destroy workflows require Environment **`gcp-destroy`** (required reviewers) —
+Prefer a GitHub Environment with required reviewers on **GCP Destroy** —
 [GITHUB-ACTIONS-SETUP.md](GITHUB-ACTIONS-SETUP.md).
 
 ---
