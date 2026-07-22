@@ -1,0 +1,4 @@
+---
+# Set via bootstrap: GRAFANA_ADMIN_PASSWORD or -e grafana_admin_password=...
+# Never commit a real password. Empty fails the assert in tasks.
+grafana_admin_password: ""

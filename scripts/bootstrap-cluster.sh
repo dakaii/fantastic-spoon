@@ -60,6 +60,25 @@ EXTRA_VARS=(
   -e "provisioner=${PROVISIONER}"
 )
 
+# Grafana admin password (primary addons only). Prefer env/secret; else generate once.
+if [[ "$CLUSTER" == "primary" ]]; then
+  if [[ -z "${GRAFANA_ADMIN_PASSWORD:-}" ]]; then
+    GRAFANA_ADMIN_PASSWORD="$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 24)"
+    # Mask in GitHub Actions logs if present
+    if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+      echo "::add-mask::${GRAFANA_ADMIN_PASSWORD}"
+    fi
+    mkdir -p "${REPO_ROOT}/tmp"
+    umask 077
+    printf '%s\n' "$GRAFANA_ADMIN_PASSWORD" >"${REPO_ROOT}/tmp/grafana-admin-password"
+    echo "==> Generated Grafana admin password → tmp/grafana-admin-password (gitignored)"
+    echo "    Or set GRAFANA_ADMIN_PASSWORD / GitHub secret before bootstrap to choose your own."
+  elif [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::add-mask::${GRAFANA_ADMIN_PASSWORD}"
+  fi
+  EXTRA_VARS+=(-e "grafana_admin_password=${GRAFANA_ADMIN_PASSWORD}")
+fi
+
 # Pass Velero creds for standby if meta file exists
 META_FILE="${INVENTORY%.yml}.meta.json"
 if [[ -f "$META_FILE" ]]; then

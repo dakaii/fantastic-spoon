@@ -20,6 +20,8 @@ shared-services-gcp/cloud_function/witness.zip
 *.pem
 .env
 .secrets/
+tmp/
+!tmp/.gitkeep
 
 # WireGuard local client/server keys + profiles (never commit)
 vpn-clients/**

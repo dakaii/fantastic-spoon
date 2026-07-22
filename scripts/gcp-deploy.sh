@@ -382,7 +382,10 @@ cmd_apps() {
   echo "========================================"
   echo "Kubeconfig:  export KUBECONFIG=${KUBECONFIG_PATH}"
   echo "Argo CD UI:  kubectl port-forward svc/argocd-server -n argocd 8080:443"
-  echo "             (admin password: changeme — from Ansible values)"
+  echo "             password: kubectl -n argocd get secret argocd-initial-admin-secret \\"
+  echo "               -o jsonpath='{.data.password}' | base64 -d; echo"
+  echo "Grafana:     kubectl port-forward svc/kube-prometheus-stack-grafana -n monitoring 3000:80"
+  echo "             password: GRAFANA_ADMIN_PASSWORD secret, or tmp/grafana-admin-password"
   echo ""
   echo "Linkding:"
   if [[ -n "$lb_ip" ]]; then

@@ -38,8 +38,10 @@ kubectl apply -f gitops/argocd/applications/infra-monitoring.yaml
 # Port-forward Grafana
 kubectl port-forward svc/kube-prometheus-stack-grafana -n monitoring 3000:80
 
-# Default login (change after Ansible install):
-# user: admin  password: changeme
+# Default login:
+# user: admin
+# password: GRAFANA_ADMIN_PASSWORD env/secret, or tmp/grafana-admin-password from bootstrap
+# (no default password is committed to git)
 ```
 
 Open http://localhost:3000 → Dashboards → **Hybrid K8s Platform Overview**

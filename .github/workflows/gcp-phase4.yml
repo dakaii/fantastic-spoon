@@ -39,7 +39,7 @@ jobs:
           [[ -n "$GCP_PROJECT" ]] || { echo "::error::Missing secret GCP_PROJECT"; missing=1; }
           [[ -n "$GCP_SA_KEY" ]] || { echo "::error::Missing secret GCP_SA_KEY"; missing=1; }
           [[ -n "$SSH_PUBLIC_KEY" ]] || { echo "::error::Missing secret SSH_PUBLIC_KEY"; missing=1; }
-          [[ -n "$ADMIN_CIDR" ]] || { echo "::error::Missing secret ADMIN_CIDR (use 0.0.0.0/0 for GitHub runners)"; missing=1; }
+          [[ -n "$ADMIN_CIDR" ]] || { echo "::error::Missing secret ADMIN_CIDR (YOUR.IP/32; lab/GHA only: 0.0.0.0/0 — see docs)"; missing=1; }
           if [[ $missing -ne 0 ]]; then
             echo "See docs/GITHUB-ACTIONS-SETUP.md — Phase 4 needs --full SA (serviceUsageAdmin + DNS/Functions/Run/...)"
             exit 1

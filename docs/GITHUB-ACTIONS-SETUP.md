@@ -58,7 +58,8 @@ GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-setup-github-actions.sh --full --push-s
 | `GCP_SA_KEY` | All |
 | `SSH_PRIVATE_KEY` | Bootstrap, Deploy |
 | `SSH_PUBLIC_KEY` | Deploy, Destroy |
-| `ADMIN_CIDR` | Deploy (`0.0.0.0/0` for GitHub runners — set by script) |
+| `ADMIN_CIDR` | Deploy — your IP `/32` preferred; lab/GHA runners may need temporary `0.0.0.0/0` (explicit) |
+| `GRAFANA_ADMIN_PASSWORD` | Optional — primary bootstrap; if unset, bootstrap generates one (masked in Actions) |
 
 ### 3. Seed Terraform state (if you already deployed locally)
 
@@ -70,17 +71,33 @@ GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-tfstate-sync.sh push
 
 State is stored in `gs://YOUR_PROJECT-tfstate/`.
 
-### 4. Open SSH firewall for GitHub runners
+### 4. SSH firewall for GitHub runners
 
-Edit `primary-cluster-gcp/terraform.tfvars`:
+GitHub-hosted runners use **dynamic** egress IPs. Pick one:
+
+**A) Lab only (temporary open SSH)** — then tighten after bootstrap:
 
 ```hcl
-admin_cidr = "0.0.0.0/0"
+admin_cidr = "0.0.0.0/0"   # temporary — do not leave forever
 ```
 
 ```bash
 cd primary-cluster-gcp && terraform apply
 ```
+
+When `admin_cidr` is world-open, **do not** leave VPN metrics on the same allowlist: VPN deploy auto-sets `vpn_metrics_cidrs` to primary NAT `/32`s.
+
+**B) Locked down** — `admin_cidr = "YOUR.IP/32"` and bootstrap from that machine (`./scripts/bootstrap-cluster.sh`), not from GitHub-hosted runners.
+
+### 5. Protect destroy with a GitHub Environment (required by workflows)
+
+**GCP Destroy** and **GCP VPN Destroy** use `environment: gcp-destroy`. Create it once:
+
+1. Repo **Settings → Environments → New environment** → name: `gcp-destroy`
+2. Enable **Required reviewers** → add yourself
+3. Save
+
+Until the environment exists (and after it requires review), destroy runs wait for approval in the Actions UI. `gh workflow run` still queues the run; approve in the browser.
 
 ---
 
@@ -93,6 +110,12 @@ cd primary-cluster-gcp && terraform apply
 ```bash
 gh workflow run gcp-bootstrap.yml -f cluster=primary -R dakaii/fantastic-spoon
 gh run watch -R dakaii/fantastic-spoon
+```
+
+Optional Grafana password (otherwise generated + masked):
+
+```bash
+gh secret set GRAFANA_ADMIN_PASSWORD -b 'your-long-password' -R dakaii/fantastic-spoon
 ```
 
 ### Phase 2 (standby + GCS + Velero) — no local login
@@ -211,7 +234,7 @@ gh workflow run gcp-destroy.yml -R dakaii/fantastic-spoon
 
 Optional: check **delete_project** to remove the GCP project too.
 
-Tip: add a [GitHub Environment](https://docs.github.com/en/actions/deployment/targeting-different-environments) with required reviewers on **GCP Destroy**.
+Destroy workflows require Environment **`gcp-destroy`** with reviewers (see §5 above). Without it, the job fails or waits for approval.
 
 **Why destroy used to “succeed” but leave VMs:** (1) local state never pushed to GCS,
 (2) `gcloud` account ≠ Application Default Credentials (Terraform uses ADC),
@@ -231,7 +254,9 @@ Creating a GCP project requires **org/folder Project Creator** and **Billing Acc
 - Secrets only in GitHub Secrets — never in git
 - Workflows are manual (`workflow_dispatch`) only
 - Use a dedicated deploy SSH key + service account
-- Consider Environment approval on **GCP Destroy**
+- **GCP Destroy** / **GCP VPN Destroy** require Environment `gcp-destroy` approval
+- Prefer `admin_cidr` = your IP `/32`; treat `0.0.0.0/0` as lab-only and temporary
+- Grafana password via `GRAFANA_ADMIN_PASSWORD` (or generated at bootstrap — not `changeme` in git)
 
 ---
 
@@ -242,7 +267,7 @@ Full write-up of failures from primary/standby bring-up (with run IDs and PRs):
 
 | Problem | Fix |
 |---------|-----|
-| SSH timeout | `admin_cidr` stale — update tfvars + `terraform apply` (dev: temp `0.0.0.0/0`) |
+| SSH timeout | `admin_cidr` stale — update tfvars + `terraform apply` (lab: temporary `0.0.0.0/0`, then tighten) |
 | Deploy tries to recreate VMs | Run `./scripts/gcp-tfstate-sync.sh push` from Mac first |
 | Destroy does nothing | Same — state must be in GCS bucket (`./scripts/gcp-teardown.sh` pushes first) |
 | Destroy “success” but standby left / HMAC 403 | Re-run setup with `--full` (needs `roles/storage.hmacKeyAdmin`); workflow now fails the job if any module destroy errors |

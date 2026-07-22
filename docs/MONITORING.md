@@ -56,7 +56,7 @@ kubectl port-forward svc/kube-prometheus-stack-grafana -n monitoring 3000:80
 
 - URL: http://localhost:3000
 - User: `admin`
-- Password: `changeme` (set during Ansible install — change this)
+- Password: from `GRAFANA_ADMIN_PASSWORD` (GitHub secret / env), or `tmp/grafana-admin-password` if bootstrap generated one. Not stored in git.
 
 Navigate to **Dashboards → Hybrid K8s Platform Overview**.
 

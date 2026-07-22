@@ -134,6 +134,14 @@
     msg: Skipping Velero install — set velero_bucket and credentials via cloud-services meta or -e extra vars.
   when: not velero_configured
 
+- name: Check whether kube-prometheus-stack is already installed
+  kubernetes.core.helm_info:
+    name: kube-prometheus-stack
+    release_namespace: monitoring
+  register: kube_prometheus_info
+  failed_when: false
+  when: cluster_profile | default('primary') == 'primary'
+
 - name: Install kube-prometheus-stack
   kubernetes.core.helm:
     name: kube-prometheus-stack
@@ -142,7 +150,32 @@
     create_namespace: true
     values:
       grafana:
-        adminPassword: changeme
+        adminPassword: "{{ grafana_admin_password }}"
+  when:
+    - cluster_profile | default('primary') == 'primary'
+    - grafana_admin_password | default('') | length >= 12
+
+- name: Skip Grafana password update on addons re-run without password
+  ansible.builtin.debug:
+    msg: >-
+      kube-prometheus-stack already installed; skipping Helm values update
+      (no grafana_admin_password). Pass GRAFANA_ADMIN_PASSWORD to rotate.
+  when:
+    - cluster_profile | default('primary') == 'primary'
+    - grafana_admin_password | default('') | length < 12
+    - kube_prometheus_info.status is defined
+    - kube_prometheus_info.status.name is defined
+
+- name: Fail when monitoring is missing and no Grafana password was provided
+  ansible.builtin.fail:
+    msg: >-
+      kube-prometheus-stack is not installed and grafana_admin_password is unset
+      (min 12 chars). Set GRAFANA_ADMIN_PASSWORD or re-run bootstrap-cluster.sh
+      (it generates one into tmp/grafana-admin-password).
+  when:
+    - cluster_profile | default('primary') == 'primary'
+    - grafana_admin_password | default('') | length < 12
+    - kube_prometheus_info.status is not defined or kube_prometheus_info.status.name is not defined
 
 - name: Install Velero (AWS S3)
   ansible.builtin.include_tasks: "{{ playbook_dir }}/../includes/velero-helm-install.yml"
