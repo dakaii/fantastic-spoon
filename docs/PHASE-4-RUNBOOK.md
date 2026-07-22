@@ -11,7 +11,8 @@ Finish Layer 4 after Phase 1–2 (primary + standby + Velero). This runbook defi
 
 Full Velero/Argo automation inside Cloud Workflows is **out of scope for this finish** — same as the AWS Step Functions stub.
 
-Design: [GCP-ARCHITECTURE.md](GCP-ARCHITECTURE.md)
+Design: [GCP-ARCHITECTURE.md](GCP-ARCHITECTURE.md)  
+Interview demo (witness talk-track): [PORTFOLIO-DEMO.md](PORTFOLIO-DEMO.md)
 
 ---
 

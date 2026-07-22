@@ -4,6 +4,8 @@ Run deploy and destroy from GitHub’s cloud so you can close your laptop. Works
 
 **GCP project creation is not in GitHub Actions** — create the project once manually (Console or local script), then use Actions for deploy/destroy.
 
+**Interview demo (after the stack is up):** [PORTFOLIO-DEMO.md](PORTFOLIO-DEMO.md)
+
 ---
 
 ## Workflows

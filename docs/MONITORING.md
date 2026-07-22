@@ -2,6 +2,8 @@
 
 Prometheus + Grafana + Alertmanager for the hybrid k8s platform.
 
+**Interview demo (Grafana + VPN dashboards):** [PORTFOLIO-DEMO.md](PORTFOLIO-DEMO.md)
+
 ## Stack overview
 
 | Component | Purpose | Installed by |

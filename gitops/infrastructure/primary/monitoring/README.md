@@ -2,6 +2,8 @@
 
 Observability for the hybrid k8s platform: cluster health, DR readiness, and GitOps status.
 
+Interview walkthrough: [docs/PORTFOLIO-DEMO.md](../../../../docs/PORTFOLIO-DEMO.md)
+
 ## What's included
 
 | File | Purpose |
