@@ -40,6 +40,8 @@ That opens a browser, you sign in, and credentials are stored **locally** under 
 
 ---
 
+**Interview walkthrough (stack already up):** [PORTFOLIO-DEMO.md](PORTFOLIO-DEMO.md) — do not run a full deploy live.
+
 ## Local deploy (recommended for first time)
 
 Best for: learning, first cluster, debugging Terraform/Ansible, no GitHub secrets setup.
