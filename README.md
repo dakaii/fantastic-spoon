@@ -32,6 +32,8 @@ Optional: `GCP_PROJECT=hybrid-k8s-dev ./setup.sh`
 
 Details: [docs/GCP-DEPLOY.md](docs/GCP-DEPLOY.md) · GitHub Actions: [docs/GITHUB-ACTIONS-SETUP.md](docs/GITHUB-ACTIONS-SETUP.md)
 
+**Interview / portfolio walkthrough (5–15 min):** [docs/PORTFOLIO-DEMO.md](docs/PORTFOLIO-DEMO.md) — bring the stack up the night before; do not run full `./setup.sh` live.
+
 ## Quick Start (On-Prem Primary)
 
 ```bash
@@ -80,6 +82,7 @@ scripts/gcp-destroy-verify.sh     ← pre/post VM checks for destroy
 
 ## Documentation
 
+- [Portfolio demo — 5–15 min interviewer walkthrough](docs/PORTFOLIO-DEMO.md)
 - [GCP Architecture (default)](docs/GCP-ARCHITECTURE.md)
 - [GCP Deploy guide — local scripts vs GitHub Actions](docs/GCP-DEPLOY.md)
 - [GitHub Actions setup — secrets, workflows, VPN/monitoring post-steps](docs/GITHUB-ACTIONS-SETUP.md)

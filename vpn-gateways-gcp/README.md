@@ -9,7 +9,8 @@ Isolated Terraform stack for **consumer VPN city exits** (full-tunnel WireGuard)
 
 Product: [docs/CONSUMER-VPN.md](../docs/CONSUMER-VPN.md)  
 Design: [docs/VPN-ARCHITECTURE.md](../docs/VPN-ARCHITECTURE.md)  
-Operate: [docs/VPN-RUNBOOK.md](../docs/VPN-RUNBOOK.md)
+Operate: [docs/VPN-RUNBOOK.md](../docs/VPN-RUNBOOK.md)  
+Interview demo: [docs/PORTFOLIO-DEMO.md](../docs/PORTFOLIO-DEMO.md)
 
 ## Quick start
 

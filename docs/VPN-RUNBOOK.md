@@ -5,7 +5,8 @@ Primary/standby clusters are not required for basic egress (V1 = dedicated GCE V
 + host WireGuard). Use the k3s Prometheus/Grafana stack to **monitor** gateways.
 
 Product: [CONSUMER-VPN.md](CONSUMER-VPN.md)  
-Design: [VPN-ARCHITECTURE.md](VPN-ARCHITECTURE.md)
+Design: [VPN-ARCHITECTURE.md](VPN-ARCHITECTURE.md)  
+Interview demo: [PORTFOLIO-DEMO.md](PORTFOLIO-DEMO.md)
 
 ## Isolation guarantees
 

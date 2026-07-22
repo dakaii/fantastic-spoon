@@ -3,7 +3,8 @@
 Cloud Function witness, Cloud Workflows (notify stubs), and optional Cloud DNS
 primary/backup routing.
 
-Operator guide: [docs/PHASE-4-RUNBOOK.md](../docs/PHASE-4-RUNBOOK.md)
+Operator guide: [docs/PHASE-4-RUNBOOK.md](../docs/PHASE-4-RUNBOOK.md)  
+Interview demo: [docs/PORTFOLIO-DEMO.md](../docs/PORTFOLIO-DEMO.md)
 
 ## Prerequisites
 

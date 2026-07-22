@@ -6,7 +6,8 @@ portable k3s platform, monitored with the existing Prometheus/Grafana stack.
 
 Design detail: [VPN-ARCHITECTURE.md](VPN-ARCHITECTURE.md)  
 Operate: [VPN-RUNBOOK.md](VPN-RUNBOOK.md)  
-Monitor: [MONITORING.md](MONITORING.md#consumer-vpn-gateway)
+Monitor: [MONITORING.md](MONITORING.md#consumer-vpn-gateway)  
+Interview demo: [PORTFOLIO-DEMO.md](PORTFOLIO-DEMO.md)
 
 ---
 

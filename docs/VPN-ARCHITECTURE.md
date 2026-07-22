@@ -6,7 +6,8 @@ deployed beside the portable k3s platform and monitored with existing Prometheus
 No custom VPN app or billing in V1–V2.
 
 **Product overview:** [CONSUMER-VPN.md](CONSUMER-VPN.md)  
-**Operate:** [VPN-RUNBOOK.md](VPN-RUNBOOK.md)
+**Operate:** [VPN-RUNBOOK.md](VPN-RUNBOOK.md)  
+**Interview demo:** [PORTFOLIO-DEMO.md](PORTFOLIO-DEMO.md)
 
 ---
 
@@ -366,13 +367,11 @@ Do **not** block on Phase 4 shared-services DNS. Do **not** start a client app.
 
 ## 9. Demo script (interview)
 
-1. Show architecture diagram (this doc §3)  
-2. `kubectl get pods -n vpn -o wide` — gateways on labeled nodes / cities  
-3. Connect WireGuard profile `us` → `curl ifconfig.me`  
-4. Switch to `hk` → IP changes to asia-east2  
-5. Kill gateway pod → Deployment restores handshake  
-6. Open Grafana only over VPN  
-7. Point to Terraform + GitOps path; mention Velero / primary-standby as the broader platform
+**Canonical walkthrough:** [PORTFOLIO-DEMO.md](PORTFOLIO-DEMO.md) (5–15 min; V1 = host WireGuard VM).
+
+Summary: architecture → `./scripts/vpn.sh up` / `ip` → Grafana port-forward (not over the
+consumer tunnel) → optional Phase 4 witness talk. Do **not** `kubectl get pods -n vpn`
+(there is no vpn namespace in V1).
 
 ---
 
