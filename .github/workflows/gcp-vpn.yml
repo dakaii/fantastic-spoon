@@ -9,10 +9,13 @@ on:
   workflow_dispatch:
     inputs:
       city:
-        description: City/profile name (single-city V1 default us)
+        description: City profile (us=us-central1, hk=asia-east2). Per-city TF state.
         required: false
         default: "us"
-        type: string
+        type: choice
+        options:
+          - us
+          - hk
 
 jobs:
   vpn:

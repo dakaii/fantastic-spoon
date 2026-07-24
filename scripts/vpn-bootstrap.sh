@@ -14,10 +14,12 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export REPO_ROOT
 TF_DIR="${REPO_ROOT}/vpn-gateways-gcp"
-INV_OUT="${REPO_ROOT}/ansible/inventory/vpn-hosts.yml"
 # shellcheck source=vpn-peers-lib.sh
 # shellcheck disable=SC1091
 source "$(dirname "$0")/vpn-peers-lib.sh"
+# shellcheck source=vpn-city-lib.sh
+# shellcheck disable=SC1091
+source "$(dirname "$0")/vpn-city-lib.sh"
 
 log() { echo "==> $*"; }
 
@@ -37,6 +39,7 @@ log "Reading VPN Terraform outputs"
 CITY="$(terraform -chdir="$TF_DIR" output -raw vpn_city)"
 ENDPOINT="$(terraform -chdir="$TF_DIR" output -raw vpn_public_ip)"
 PORT="$(terraform -chdir="$TF_DIR" output -raw wireguard_port)"
+INV_OUT="$(vpn_city_inventory_path "$CITY")"
 DIR="$(vpn_peers_city_dir "$CITY")"
 PEERS="$(vpn_peers_dir "$CITY")"
 
@@ -63,7 +66,10 @@ if [[ ! -f "${DIR}/client.privatekey" ]]; then
 fi
 
 log "Writing ${INV_OUT}"
+mkdir -p "$(dirname "$INV_OUT")"
 terraform -chdir="$TF_DIR" output -raw ansible_inventory >"$INV_OUT"
+# Compat symlink for older docs that expect vpn-hosts.yml
+ln -sfn "$(basename "$INV_OUT")" "${REPO_ROOT}/ansible/inventory/vpn-hosts.yml"
 [[ -s "$INV_OUT" ]] || {
   echo "ERROR: empty inventory from terraform output" >&2
   exit 1

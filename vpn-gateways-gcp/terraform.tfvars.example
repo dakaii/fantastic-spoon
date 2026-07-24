@@ -9,11 +9,20 @@
 # This stack is isolated (own VPC + state) and does not modify primary/standby.
 
 gcp_project = "your-gcp-project-id"
+# Per-city map (scripts/vpn-city-lib.sh): us→us-central1, hk→asia-east2
 gcp_region  = "us-central1"
 gcp_zone    = "us-central1-a"
 
 project_name = "hybrid-k8s"
 city         = "us"
+# Second city example:
+# city         = "hk"
+# gcp_region   = "asia-east2"
+# gcp_zone     = "asia-east2-a"
+# subnet_cidr  = "10.50.1.0/24"
+#
+# Each city has its own GCS TF state: vpn-gateways-gcp/<city>/terraform.tfstate
+# Prefer: VPN_CITY=hk ./scripts/gcp-deploy.sh vpn  (or GHA city=hk)
 
 ssh_public_key = "ssh-ed25519 AAAA... you@host"
 admin_cidr     = "203.0.113.10/32"

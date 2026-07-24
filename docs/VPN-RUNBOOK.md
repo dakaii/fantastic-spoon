@@ -152,11 +152,34 @@ rm -rf vpn-clients/us   # optional — destroys local keys
 
 Full project teardown (includes VPN): `gh workflow run gcp-destroy.yml`
 
-## Second city (Phase V2 sketch)
+## Second city (`hk` / asia-east2)
 
-Duplicate the stack pattern (second TF workspace or `city=hk` + `asia-east2`),
-or add `for_each` over cities in Terraform. Keep separate client profiles.
-Do not merge into primary Terraform.
+Each city is the **same Terraform module** with **separate GCS state**:
+`gs://$PROJECT-tfstate/vpn-gateways-gcp/<city>/terraform.tfstate`.
+VPC/firewall names are city-suffixed so `us` and `hk` can coexist.
+
+```bash
+# Deploy US (default)
+gh workflow run gcp-vpn.yml -R dakaii/fantastic-spoon -f city=us
+
+# Deploy HK (does not replace US)
+gh workflow run gcp-vpn.yml -R dakaii/fantastic-spoon -f city=hk
+
+# Local equivalent
+VPN_CITY=hk GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-deploy.sh vpn
+
+# Demo switch
+./scripts/vpn.sh down us
+./scripts/vpn.sh up hk
+./scripts/vpn.sh ip    # expect asia-east2 egress
+
+# Destroy one city only
+gh workflow run gcp-vpn-destroy.yml -R dakaii/fantastic-spoon -f city=hk
+```
+
+**Migration note:** renaming VPC/FW to include `${city}` replaces resources for an
+existing `us` stack — destroy/recreate VPN-only once after upgrading, or accept
+Terraform replace on next apply.
 
 ## Troubleshooting
 

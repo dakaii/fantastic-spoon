@@ -8,10 +8,13 @@ on:
   workflow_dispatch:
     inputs:
       city:
-        description: City label (informational; V1 destroys the vpn-gateways-gcp stack)
+        description: Which city gateway to destroy (us or hk). Other cities untouched.
         required: false
         default: "us"
-        type: string
+        type: choice
+        options:
+          - us
+          - hk
 
 jobs:
   destroy-vpn:
@@ -49,6 +52,7 @@ jobs:
           GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
           SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
           ADMIN_CIDR: ${{ secrets.ADMIN_CIDR }}
+          VPN_CITY: ${{ inputs.city }}
         run: |
           chmod +x scripts/*.sh
           export SSH_PUBLIC_KEY="${SSH_PUBLIC_KEY:-ssh-ed25519 placeholder}"

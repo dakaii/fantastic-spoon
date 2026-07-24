@@ -27,6 +27,8 @@ tmp/
 vpn-clients/**
 !vpn-clients/.gitkeep
 ansible/inventory/vpn-hosts.yml
+ansible/inventory/vpn-hosts-*.yml
+vpn-gateways-gcp/.states/
 
 # OS / editor
 .DS_Store

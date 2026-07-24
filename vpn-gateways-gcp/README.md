@@ -12,25 +12,31 @@ Design: [docs/VPN-ARCHITECTURE.md](../docs/VPN-ARCHITECTURE.md)
 Operate: [docs/VPN-RUNBOOK.md](../docs/VPN-RUNBOOK.md)  
 Interview demo: [docs/PORTFOLIO-DEMO.md](../docs/PORTFOLIO-DEMO.md)
 
+**Cities:** `us` (us-central1) and `hk` (asia-east2). Each city = separate GCS TF state
+(`vpn-gateways-gcp/<city>/…`). Prefer `VPN_CITY=hk ./scripts/gcp-deploy.sh vpn` or GHA `city=hk`.
+
 ## Quick start
 
 ```bash
+# Recommended (writes tfvars + region map + state sync)
+VPN_CITY=us GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-deploy.sh vpn
+
+# Second city (does not replace us)
+VPN_CITY=hk GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-deploy.sh vpn
+
+# Or manual:
 cd vpn-gateways-gcp
 cp terraform.tfvars.example terraform.tfvars
-# edit: gcp_project, ssh_public_key, admin_cidr (same as primary)
-
-terraform init
-terraform apply
-
-# Generate keys + configure server + exporters + client config
-cd ..
-./scripts/vpn-bootstrap.sh
+# edit: gcp_project, ssh_public_key, admin_cidr, city/region
+terraform init && terraform apply
+cd .. && ./scripts/vpn-bootstrap.sh
 ```
 
-Destroy anytime (primary/standby untouched):
+Destroy one city (primary/standby untouched):
 
 ```bash
-terraform -chdir=vpn-gateways-gcp destroy
+VPN_CITY=us GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-vpn-destroy-ci.sh
+# or: gh workflow run gcp-vpn-destroy.yml -f city=us
 ```
 
 ## Outputs
@@ -39,4 +45,4 @@ terraform -chdir=vpn-gateways-gcp destroy
 |--------|-----|
 | `vpn_public_ip` | WireGuard Endpoint in client `.conf` |
 | `vpn_metrics_url` | Prometheus scrape target (`IP:9100`) |
-| `ansible_inventory` | Written by bootstrap to `ansible/inventory/vpn-hosts.yml` |
+| `ansible_inventory` | Written by bootstrap to `ansible/inventory/vpn-hosts-<city>.yml` |

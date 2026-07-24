@@ -18,7 +18,7 @@ Deep dives: [CONSUMER-VPN.md](CONSUMER-VPN.md) · [VPN-RUNBOOK.md](VPN-RUNBOOK.m
 | Ready | How |
 |-------|-----|
 | Primary (+ optional standby) | `./setup.sh` or GHA **GCP Deploy All** / Bootstrap — [GCP-DEPLOY.md](GCP-DEPLOY.md) |
-| VPN city (`us`) | GHA **GCP VPN** or `./scripts/vpn-bootstrap.sh` — client conf under `vpn-clients/us/` |
+| VPN city (`us`, optional `hk`) | GHA **GCP VPN** (`city=us` / `hk`) — configs under `vpn-clients/<city>/` |
 | Monitoring wired | VPN deploy runs `vpn-monitoring-wire.sh`; confirm scrape if primary was already up |
 | Auth | Same Google account for `gcloud` **and** ADC (`gcloud auth application-default login`). Use `GCP_ACCOUNT=you@gmail.com` locally — **no email in git** |
 | Grafana password | `GRAFANA_ADMIN_PASSWORD` secret, or `tmp/grafana-admin-password` from bootstrap |
@@ -57,11 +57,22 @@ not the browse path.
 ./scripts/vpn.sh up us laptop
 ./scripts/vpn.sh ip
 # or: curl -4 ifconfig.me
-terraform -chdir=vpn-gateways-gcp output -raw vpn_public_ip
+# Expect: matches terraform vpn_public_ip for city=us
 ```
 
 **On screen:** public IP matches the gateway. One sentence: full-tunnel WireGuard on a
 **dedicated GCE VM** (host `wg0`), not a Deployment in the cluster.
+
+If a second city is deployed (`hk` / asia-east2):
+
+```bash
+./scripts/vpn.sh down us laptop
+./scripts/vpn.sh up hk laptop
+./scripts/vpn.sh ip   # different egress IP
+./scripts/vpn.sh down hk laptop
+```
+
+Otherwise just:
 
 ```bash
 ./scripts/vpn.sh down us laptop
@@ -160,5 +171,5 @@ GHA destroy workflows require Environment **`gcp-destroy`** (required reviewers)
 ## Resume bullets (copy-paste)
 
 - Designed a portable hybrid k3s platform (Terraform provisioners + Ansible bootstrap + Argo CD) with warm standby and Velero backups on GCP.
-- Built an additive multi-city WireGuard consumer VPN (full-tunnel egress, stock clients) with Prometheus/Grafana peer and host health.
-- Implemented Cloud Function witness + Cloud DNS failover path; documented operator Level C app activation on standby.
+- Built an additive WireGuard consumer VPN (full-tunnel city exits; `us` + optional `hk`) with Prometheus/Grafana peer and host health.
+- Implemented Cloud Function witness + Cloud DNS failover; Level C app activation on standby is operator-assisted (`failover-gcp.sh`).

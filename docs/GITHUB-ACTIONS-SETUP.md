@@ -15,8 +15,8 @@ Run deploy and destroy from GitHub’s cloud so you can close your laptop. Works
 | **GCP Bootstrap** | Ansible/k3s only — VMs already exist, need (re)bootstrap |
 | **GCP Phase 2** | Standby Terraform + bootstrap + Velero on primary (after Phase 1) |
 | **GCP Phase 4** | Witness + optional Cloud DNS (`shared-services-gcp`) |
-| **GCP VPN** | WireGuard gateway VM + client `.conf` artifact (single city) |
-| **GCP VPN Destroy** | Tear down VPN gateway only (primary/standby untouched) |
+| **GCP VPN** | WireGuard gateway VM + client `.conf` (`city=us` or `hk`) |
+| **GCP VPN Destroy** | Tear down one VPN city (primary/standby untouched) |
 | **GCP Deploy All** | Full stack: Terraform + bootstrap + Linkding apps (`skip_apps` to skip apps) |
 | **GCP Destroy** | Tear down all resources (`terraform destroy`) |
 | **Terraform Validate** | Automatic on PRs — no secrets |

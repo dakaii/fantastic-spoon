@@ -1,15 +1,18 @@
-# Phase 4 Runbook — Automated Failover (GCP)
+# Phase 4 Runbook — Failover (GCP)
 
 Finish Layer 4 after Phase 1–2 (primary + standby + Velero). This runbook defines a
 **finishable operator path**:
 
-| Level | What you get |
-|-------|----------------|
-| **A — Witness** | Cloud Function + Scheduler probe primary `/readyz`, Pub/Sub alerts, Workflow notify stub |
-| **B — DNS failover** | Cloud DNS primary/backup A record (requires a domain) |
-| **C — Apps on standby** | **Manual** Velero restore + scale/sync (Workflow Velero/Argo steps are placeholders) |
+| Level | What you get | Automation |
+|-------|----------------|------------|
+| **A — Witness** | Cloud Function + Scheduler probe primary `/readyz`, Pub/Sub alerts, Workflow notify stub | Automated |
+| **B — DNS failover** | Cloud DNS primary/backup A record (requires a domain) | Automated (HC) |
+| **C — Apps on standby** | Velero restore + scale/sync via `./scripts/failover-gcp.sh activate-apps` | **Operator** — Workflow Velero/Argo steps are stubs |
 
-Full Velero/Argo automation inside Cloud Workflows is **out of scope for this finish** — same as the AWS Step Functions stub.
+> **Honest boundary:** “Failover” in Pub/Sub / Workflow means *notify + DNS path*, not
+> “apps restored on standby.” Use Level C script (supports `--dry-run`).
+
+Full Velero/Argo automation inside Cloud Workflows is **out of scope** — same as the AWS Step Functions stub.
 
 Design: [GCP-ARCHITECTURE.md](GCP-ARCHITECTURE.md)  
 Interview demo (witness talk-track): [PORTFOLIO-DEMO.md](PORTFOLIO-DEMO.md)
@@ -129,9 +132,11 @@ DNS may already point at the standby LB after primary fails Cloud DNS health che
 Standby workloads often start at **0 replicas** — activate them:
 
 ```bash
-# Prefer the helper (reads standby inventory / kubeconfig you supply):
+./scripts/failover-gcp.sh status          # A/B/C checklist
+./scripts/failover-gcp.sh activate-apps --dry-run
+
 export STANDBY_KUBECONFIG=~/.kube/hybrid-standby.yaml
-./scripts/failover-gcp.sh activate-apps
+./scripts/failover-gcp.sh activate-apps   # scale + Velero/Argo hints
 
 # Or manually:
 # - Restore latest Velero backup onto standby (if using Velero across clusters)

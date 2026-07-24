@@ -75,12 +75,20 @@ sync_state_before_destroy() {
   done
 }
 
+# shellcheck source=vpn-city-lib.sh
+# shellcheck disable=SC1091
+source "${REPO_ROOT}/scripts/vpn-city-lib.sh"
+
 gcloud config set project "$GCP_PROJECT"
 
 sync_state_before_destroy
 
-# Reverse apply order — continue after a module failure so remaining stacks still tear down
-tf_destroy vpn-gateways-gcp || true
+# Destroy every known VPN city (per-city GCS state), then clusters
+for _city in $(vpn_city_known); do
+  log "VPN destroy city=${_city}"
+  VPN_CITY="${_city}" "${REPO_ROOT}/scripts/gcp-vpn-destroy-ci.sh" || DESTROY_FAILED=1
+done
+
 tf_destroy shared-services-gcp || true
 tf_destroy cloud-services-gcp || true
 tf_destroy primary-cluster-gcp || true

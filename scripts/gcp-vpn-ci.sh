@@ -2,7 +2,7 @@
 # gcp-vpn-ci.sh — WireGuard VPN city gateway from GitHub Actions
 #
 # Requires env: GCP_PROJECT, SSH_PUBLIC_KEY, ADMIN_CIDR
-# Optional: VPN_CITY (default us)
+# Optional: VPN_CITY (default us) — also maps region via vpn-city-lib.sh
 # Uploads client .conf as a workflow artifact from the caller.
 set -euo pipefail
 
@@ -11,6 +11,11 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export SKIP_AUTH=1
 export FORCE_TFVARS="${FORCE_TFVARS:-1}"
 export VPN_CITY="${VPN_CITY:-us}"
+
+# shellcheck source=vpn-city-lib.sh
+# shellcheck disable=SC1091
+source "${REPO_ROOT}/scripts/vpn-city-lib.sh"
+vpn_city_resolve "$VPN_CITY"
 
 : "${GCP_PROJECT:?Set GCP_PROJECT}"
 : "${SSH_PUBLIC_KEY:?Set SSH_PUBLIC_KEY}"
@@ -25,8 +30,8 @@ command -v wg >/dev/null 2>&1 || {
 
 gcloud config set project "$GCP_PROJECT"
 
-log "Pulling Terraform state from GCS (if any)"
-"${REPO_ROOT}/scripts/gcp-tfstate-sync.sh" pull
+log "Pulling Terraform state from GCS (VPN city=${VPN_CITY})"
+VPN_CITY="$VPN_CITY" "${REPO_ROOT}/scripts/gcp-tfstate-sync.sh" pull
 
 # Discover primary NAT CIDRs before writing tfvars (so :9100 is not world-open via admin_cidr)
 if [[ -z "${VPN_METRICS_CIDRS:-}" ]]; then
@@ -48,28 +53,26 @@ if [[ -z "${VPN_METRICS_CIDRS:-}" ]]; then
   fi
 fi
 
-log "Writing terraform.tfvars"
+log "Writing terraform.tfvars (city=${VPN_CITY} region=${VPN_REGION})"
 "${REPO_ROOT}/scripts/gcp-deploy.sh" init
 
 log "VPN provision + WireGuard bootstrap (+ monitoring wire)"
 export SKIP_AUTH=1
 "${REPO_ROOT}/scripts/gcp-deploy.sh" vpn
 
-log "Pushing Terraform state to GCS (includes any vpn_metrics_cidrs apply)"
-"${REPO_ROOT}/scripts/gcp-tfstate-sync.sh" push
+log "Pushing Terraform state to GCS (city=${VPN_CITY})"
+VPN_CITY="$VPN_CITY" "${REPO_ROOT}/scripts/gcp-tfstate-sync.sh" push
 
 CITY="$VPN_CITY"
 CONF="${REPO_ROOT}/vpn-clients/${CITY}/laptop-${CITY}.conf"
 if [[ -f "$CONF" ]]; then
   mkdir -p "${REPO_ROOT}/tmp/vpn-artifact"
   cp "$CONF" "${REPO_ROOT}/tmp/vpn-artifact/"
-  # Also pack any extra peer configs generated in CI (usually just laptop)
   shopt -s nullglob
   for extra in "${REPO_ROOT}/vpn-clients/${CITY}"/*-"${CITY}".conf; do
     cp "$extra" "${REPO_ROOT}/tmp/vpn-artifact/" 2>/dev/null || true
   done
   shopt -u nullglob
-  # Public endpoint only — do not print private keys
   log "Client config ready for artifact upload: tmp/vpn-artifact/$(basename "$CONF")"
   terraform -chdir="${REPO_ROOT}/vpn-gateways-gcp" output -raw vpn_public_ip || true
 else
@@ -78,3 +81,4 @@ else
 fi
 
 log "VPN CI complete — download the workflow artifact and import into WireGuard"
+echo "  Switch cities locally: ./scripts/vpn.sh down us && ./scripts/vpn.sh up hk && ./scripts/vpn.sh ip"

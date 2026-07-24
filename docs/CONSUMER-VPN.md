@@ -26,9 +26,9 @@ egress IP becomes the gateway’s GCP IP → browse the internet through our exi
 
 Resume framing:
 
-> Built a WireGuard consumer VPN (full-tunnel city exits) beside a portable
-> multi-cluster k3s platform — Terraform + Ansible gateways, GitOps, Prometheus
-> monitoring of peer health and egress capacity.
+> Built a WireGuard consumer VPN (full-tunnel city exits, multi-region capable)
+> beside a portable multi-cluster k3s platform — Terraform + Ansible gateways,
+> GitOps, Prometheus monitoring of peer health and egress capacity.
 
 ---
 
@@ -114,8 +114,8 @@ Alerts (once scraped):
 | Phase | Outcome |
 |-------|---------|
 | **V1** (done) | Single-city full tunnel; exporters + scrape/alerts docs |
-| **V1.1** (this) | **Multi-peer** — laptop + phone + friends on one city exit |
-| **V2** | Second city; switch profile → different egress IP |
+| **V1.1** (done) | **Multi-peer** — laptop + phone + friends on one city exit |
+| **V2** (this) | Second city (`hk` / asia-east2); per-city TF state; `vpn.sh` switch |
 | **V3** | Rate/abuse notes; DNS names `vpn-us.<domain>`; optional Traefik allowlists |
 
 ---

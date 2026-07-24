@@ -173,20 +173,20 @@ Download artifact wireguard-client-${CITY}, copy *.conf to vpn-clients/${CITY}/,
 
 Local alternative (needs gcloud + terraform + ansible on your Mac):
 
-  GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-deploy.sh vpn
+  VPN_CITY=${CITY} GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-deploy.sh vpn
 EOF
 }
 
 cmd_destroy() {
   cat <<EOF
-Destroy VPN gateway only (primary/standby untouched):
+Destroy one VPN city (primary/standby untouched):
 
-  gh workflow run gcp-vpn-destroy.yml -R ${REPO_SLUG}
+  gh workflow run gcp-vpn-destroy.yml -R ${REPO_SLUG} -f city=${CITY}
   gh run watch -R ${REPO_SLUG}
 
 Local:
 
-  GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-vpn-destroy-ci.sh
+  VPN_CITY=${CITY} GCP_PROJECT=hybrid-k8s-dev ./scripts/gcp-vpn-destroy-ci.sh
   ./scripts/vpn.sh down ${CITY} ${CLIENT}   # if tunnel still up
   rm -rf vpn-clients/${CITY}                # optional — removes keys
 EOF
@@ -204,10 +204,13 @@ Commands:
   deploy   Print GitHub Actions deploy instructions
   destroy  Print GitHub Actions destroy instructions
 
+Cities: us (us-central1), hk (asia-east2)
+
 Examples:
   ./scripts/vpn.sh up
-  ./scripts/vpn.sh down
-  ./scripts/vpn.sh ip
+  ./scripts/vpn.sh up hk
+  ./scripts/vpn.sh down us && ./scripts/vpn.sh up hk && ./scripts/vpn.sh ip
+  ./scripts/vpn.sh deploy hk
 EOF
 }
 

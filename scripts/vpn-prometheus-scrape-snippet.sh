@@ -1,32 +1,91 @@
 #!/usr/bin/env bash
-# vpn-prometheus-scrape-snippet.sh — Emit kube-prometheus-stack scrape config for the VPN gateway
+# vpn-prometheus-scrape-snippet.sh — Emit kube-prometheus-stack scrape config for VPN gateways
+#
+# Discovers all city gateways when possible (gcloud tags / per-city TF state), else
+# falls back to the working-tree vpn-gateways-gcp outputs.
 #
 # Usage:
 #   ./scripts/vpn-prometheus-scrape-snippet.sh
-#   ./scripts/vpn-prometheus-scrape-snippet.sh > /tmp/vpn-additional-scrape.yaml
-#
-# Then:
-#   helm upgrade kube-prometheus-stack prometheus-community/kube-prometheus-stack \
-#     -n monitoring -f /tmp/vpn-additional-scrape.yaml --reuse-values
-#
-# Firewall: set vpn_metrics_cidrs in vpn-gateways-gcp so Prometheus can reach :9100.
+#   VPN_SCRAPE_OUT=/tmp/vpn-additional-scrape.yaml ./scripts/vpn-prometheus-scrape-snippet.sh
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TF_DIR="${REPO_ROOT}/vpn-gateways-gcp"
+
+# shellcheck source=vpn-city-lib.sh
+# shellcheck disable=SC1091
+source "${REPO_ROOT}/scripts/vpn-city-lib.sh"
 
 command -v terraform >/dev/null 2>&1 || {
   echo "ERROR: terraform not found" >&2
   exit 1
 }
 
-TARGET="$(terraform -chdir="$TF_DIR" output -raw vpn_metrics_url 2>/dev/null || true)"
-CITY="$(terraform -chdir="$TF_DIR" output -raw vpn_city 2>/dev/null || echo us)"
+# Lines: city|host:port
+TARGET_FILE="$(mktemp)"
+trap 'rm -f "$TARGET_FILE"' EXIT
 
-[[ -n "$TARGET" ]] || {
-  echo "ERROR: could not read vpn_metrics_url — apply vpn-gateways-gcp first" >&2
-  exit 1
+add_target() {
+  local city="$1" hostport="$2"
+  [[ -n "$city" && -n "$hostport" ]] || return 0
+  # Replace existing line for same city
+  if [[ -s "$TARGET_FILE" ]]; then
+    grep -v "^${city}|" "$TARGET_FILE" >"${TARGET_FILE}.tmp" || true
+    mv "${TARGET_FILE}.tmp" "$TARGET_FILE"
+  fi
+  echo "${city}|${hostport}" >>"$TARGET_FILE"
 }
+
+# 1) Live GCE instances tagged vpn-gateway (best for multi-city)
+if command -v gcloud >/dev/null 2>&1; then
+  _proj="${GCP_PROJECT:-$(gcloud config get-value project 2>/dev/null || true)}"
+  if [[ -n "$_proj" && "$_proj" != "(unset)" ]]; then
+    while IFS=$'\t' read -r name nat; do
+      [[ -n "$nat" && "$nat" != "None" ]] || continue
+      city="$(echo "$name" | sed -n 's/.*-vpn-\([a-z0-9]*\)$/\1/p')"
+      [[ -n "$city" ]] || city="unknown"
+      add_target "$city" "${nat}:9100"
+    done < <(gcloud compute instances list --project="$_proj" \
+      --filter='tags.items=vpn-gateway' \
+      --format='get(name,networkInterfaces[0].accessConfigs[0].natIP)' 2>/dev/null || true)
+  fi
+fi
+
+# 2) Per-city side states + working tree
+if [[ ! -s "$TARGET_FILE" ]]; then
+  for city in $(vpn_city_known); do
+    side="${TF_DIR}/.states/${city}"
+    if [[ -f "${side}/terraform.tfstate" ]]; then
+      url="$(terraform -chdir="$side" output -raw vpn_metrics_url 2>/dev/null || true)"
+      c="$(terraform -chdir="$side" output -raw vpn_city 2>/dev/null || echo "$city")"
+      [[ -n "$url" ]] && add_target "$c" "$url"
+    fi
+  done
+  if [[ -f "${TF_DIR}/terraform.tfstate" ]] || [[ -d "${TF_DIR}/.terraform" ]]; then
+    url="$(terraform -chdir="$TF_DIR" output -raw vpn_metrics_url 2>/dev/null || true)"
+    c="$(terraform -chdir="$TF_DIR" output -raw vpn_city 2>/dev/null || echo us)"
+    [[ -n "$url" ]] && add_target "$c" "$url"
+  fi
+fi
+
+if [[ ! -s "$TARGET_FILE" ]]; then
+  echo "ERROR: no VPN gateway metrics targets — apply vpn-gateways-gcp or set GCP_PROJECT" >&2
+  exit 1
+fi
+
+STATIC_BLOCKS=""
+count=0
+while IFS='|' read -r city hostport; do
+  [[ -n "$city" && -n "$hostport" ]] || continue
+  count=$((count + 1))
+  STATIC_BLOCKS+="
+          - targets:
+              - \"${hostport}\"
+            labels:
+              city: \"${city}\"
+              role: vpn-gateway
+              app: consumer-vpn"
+done < <(sort "$TARGET_FILE")
 
 OUT="${VPN_SCRAPE_OUT:-}"
 SNIPPET=$(cat <<EOF
@@ -38,19 +97,13 @@ prometheus:
       - job_name: vpn-gateway
         scrape_interval: 30s
         metrics_path: /metrics
-        static_configs:
-          - targets:
-              - "${TARGET}"
-            labels:
-              city: "${CITY}"
-              role: vpn-gateway
-              app: consumer-vpn
+        static_configs:${STATIC_BLOCKS}
 EOF
 )
 
 if [[ -n "$OUT" ]]; then
   printf '%s\n' "$SNIPPET" >"$OUT"
-  echo "Wrote ${OUT}" >&2
+  echo "Wrote ${OUT} (${count} city target(s))" >&2
 else
   printf '%s\n' "$SNIPPET"
 fi
@@ -58,7 +111,7 @@ fi
 cat <<EOF >&2
 
 Next:
-  1. Ensure vpn_metrics_cidrs includes scraper NAT IP(s) — for in-cluster Prometheus use primary_public_ips (all primary nodes)
+  1. Ensure vpn_metrics_cidrs includes scraper NAT IP(s) on each city stack
   2. helm upgrade ... -f <this-file> --reuse-values
   3. kubectl apply -k gitops/infrastructure/primary/monitoring/
   4. Grafana → Consumer VPN Gateway
