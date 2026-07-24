@@ -1,6 +1,6 @@
 # GCP Architecture — Locked Design
 
-This document reflects the architecture for an **all-GCP, Terraform-managed, active-passive k3s platform with witness + DNS failover** (Level A/B automated; Level C app activation is operator-assisted — see [PHASE-4-RUNBOOK.md](PHASE-4-RUNBOOK.md)).
+This document reflects the architecture for an **all-GCP, Terraform-managed, active-passive k3s platform with witness + DNS failover** (Level A/B automated; Level C scale opt-in via Workflow → activate-apps — see [PHASE-4-RUNBOOK.md](PHASE-4-RUNBOOK.md)).
 
 GCP is the **default cloud provider** for this repo. AWS modules remain available as an alternative.
 
