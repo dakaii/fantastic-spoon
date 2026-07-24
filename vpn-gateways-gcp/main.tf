@@ -24,9 +24,10 @@ locals {
   vpn_metrics_cidrs = length(var.vpn_metrics_cidrs) > 0 ? var.vpn_metrics_cidrs : [var.admin_cidr]
 }
 
-# Dedicated VPC — not peered with primary/standby. Additive and safe to destroy alone.
+# Dedicated VPC per city — not peered with primary/standby. Safe to destroy alone.
+# City suffix avoids name collisions when us + hk run as separate TF states.
 resource "google_compute_network" "vpn" {
-  name                    = "${var.project_name}-vpn-vpc"
+  name                    = "${var.project_name}-vpn-${var.city}-vpc"
   auto_create_subnetworks = false
 }
 
@@ -38,7 +39,7 @@ resource "google_compute_subnetwork" "vpn" {
 }
 
 resource "google_compute_firewall" "vpn_ssh" {
-  name    = "${var.project_name}-vpn-allow-ssh"
+  name    = "${var.project_name}-vpn-${var.city}-allow-ssh"
   network = google_compute_network.vpn.name
 
   allow {
@@ -51,7 +52,7 @@ resource "google_compute_firewall" "vpn_ssh" {
 }
 
 resource "google_compute_firewall" "vpn_wireguard" {
-  name    = "${var.project_name}-vpn-allow-wireguard"
+  name    = "${var.project_name}-vpn-${var.city}-allow-wireguard"
   network = google_compute_network.vpn.name
 
   allow {
@@ -64,7 +65,7 @@ resource "google_compute_firewall" "vpn_wireguard" {
 }
 
 resource "google_compute_firewall" "vpn_icmp" {
-  name    = "${var.project_name}-vpn-allow-icmp"
+  name    = "${var.project_name}-vpn-${var.city}-allow-icmp"
   network = google_compute_network.vpn.name
 
   allow {
@@ -77,7 +78,7 @@ resource "google_compute_firewall" "vpn_icmp" {
 
 # node_exporter (:9100) — scrape from admin / primary Prometheus egress only
 resource "google_compute_firewall" "vpn_metrics" {
-  name    = "${var.project_name}-vpn-allow-metrics"
+  name    = "${var.project_name}-vpn-${var.city}-allow-metrics"
   network = google_compute_network.vpn.name
 
   allow {

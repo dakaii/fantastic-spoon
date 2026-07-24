@@ -27,7 +27,7 @@ main:
           topic: ${pubsub_topic}
           body:
             messages:
-              - data: $${base64.encode(json.encode({"subject": "FAILOVER COMPLETE", "message": "Traffic should now route to standby cluster via Cloud DNS. Verify manually until Velero/Argo CD steps are automated."}))}
+              - data: $${base64.encode(json.encode({"subject": "FAILOVER NOTIFY (Level A/B)", "message": "Witness/DNS path signaled. Level C apps are NOT restored by this Workflow — run ./scripts/failover-gcp.sh activate-apps on standby."}))}
         next: done
 
     - done:

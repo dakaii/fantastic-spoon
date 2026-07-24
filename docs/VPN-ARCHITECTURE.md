@@ -38,7 +38,7 @@ This project is **additive** to fantastic-spoon. It does not replace primary/sta
 
 ### Product framing (resume one-liner)
 
-> Built a full-tunnel multi-city WireGuard consumer VPN beside a portable k3s platform — Terraform/Ansible gateways, stock clients, Prometheus/Grafana for peer and host health.
+> Built a full-tunnel WireGuard consumer VPN (city exits, multi-region capable) beside a portable k3s platform — Terraform/Ansible gateways, stock clients, Prometheus/Grafana for peer and host health.
 
 ---
 
