@@ -132,9 +132,11 @@ DNS may already point at the standby LB after primary fails Cloud DNS health che
 Standby workloads often start at **0 replicas** — activate them:
 
 ```bash
-# Prefer the helper (reads standby inventory / kubeconfig you supply):
+./scripts/failover-gcp.sh status          # A/B/C checklist
+./scripts/failover-gcp.sh activate-apps --dry-run
+
 export STANDBY_KUBECONFIG=~/.kube/hybrid-standby.yaml
-./scripts/failover-gcp.sh activate-apps
+./scripts/failover-gcp.sh activate-apps   # scale + Velero/Argo hints
 
 # Or manually:
 # - Restore latest Velero backup onto standby (if using Velero across clusters)
