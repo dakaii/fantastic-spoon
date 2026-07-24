@@ -7,12 +7,10 @@ Finish Layer 4 after Phase 1–2 (primary + standby + Velero). This runbook defi
 |-------|----------------|------------|
 | **A — Witness** | Cloud Function + Scheduler probe primary `/readyz`, Pub/Sub alerts, Workflow notify stub | Automated |
 | **B — DNS failover** | Cloud DNS primary/backup A record (requires a domain) | Automated (HC) |
-| **C — Apps on standby** | Velero restore + scale/sync via `./scripts/failover-gcp.sh activate-apps` | **Operator** — Workflow Velero/Argo steps are stubs |
+| **C — Apps on standby** | Scale Deployments (+ pause Argo sync). Velero **restore** still manual. | **Opt-in auto** via `enable_level_c_automation`, else `./scripts/failover-gcp.sh activate-apps` |
 
-> **Honest boundary:** “Failover” in Pub/Sub / Workflow means *notify + DNS path*, not
-> “apps restored on standby.” Use Level C script (supports `--dry-run`).
-
-Full Velero/Argo automation inside Cloud Workflows is **out of scope** — same as the AWS Step Functions stub.
+> **Honest boundary:** DNS/witness (A/B) are automated. Level C **scale** can be automated
+> (Workflow → activate-apps CF). **Velero PVC restore** and **failback** stay operator-driven.
 
 Design: [GCP-ARCHITECTURE.md](GCP-ARCHITECTURE.md)  
 Interview demo (witness talk-track): [PORTFOLIO-DEMO.md](PORTFOLIO-DEMO.md)
@@ -126,25 +124,50 @@ After 3 failures → Workflow start + Pub/Sub message; `failover_active=true`.
 
 ---
 
-## Step 5 — Manual app activation on standby (Level C)
+## Step 5 — App activation on standby (Level C)
 
 DNS may already point at the standby LB after primary fails Cloud DNS health checks.
-Standby workloads often start at **0 replicas** — activate them:
+Standby GitOps overlays often set **replicas: 0** — something must scale them up.
+
+### 5a — Manual (default)
 
 ```bash
-./scripts/failover-gcp.sh status          # A/B/C checklist
+./scripts/failover-gcp.sh status
 ./scripts/failover-gcp.sh activate-apps --dry-run
 
 export STANDBY_KUBECONFIG=~/.kube/hybrid-standby.yaml
-./scripts/failover-gcp.sh activate-apps   # scale + Velero/Argo hints
-
-# Or manually:
-# - Restore latest Velero backup onto standby (if using Velero across clusters)
-# - kubectl -n linkding scale deploy/linkding --replicas=1
-# - Sync Argo apps on standby
+./scripts/failover-gcp.sh activate-apps
 ```
 
-There is **no** automated failback Workflow yet — reverse DNS/apps manually when primary is healthy (`./scripts/failover-gcp.sh failback-notes`).
+### 5b — Automated (opt-in)
+
+When the witness fires, Cloud Workflows can call an **activate-apps** Cloud Function
+that loads standby kubeconfig from Secret Manager, pauses Argo sync on known apps
+(so `replicas: 0` overlays do not selfHeal), and scales `linkding` + `demo-app` to 1.
+
+```bash
+# 1) Seed kubeconfig (SSH to standby CP → Secret Manager)
+GCP_PROJECT=hybrid-k8s-dev ./scripts/seed-standby-kubeconfig.sh
+
+# 2) Lab: allow CF egress to standby :6443
+# cloud-services-gcp/terraform.tfvars
+#   k3s_api_source_ranges = ["0.0.0.0/0"]
+terraform -chdir=cloud-services-gcp apply
+
+# 3) Enable flag and apply shared-services
+# shared-services-gcp/terraform.tfvars
+#   enable_level_c_automation = true
+terraform -chdir=shared-services-gcp apply
+
+# 4) Confirm
+./scripts/failover-gcp.sh status
+# level_c_automation_enabled = true
+```
+
+**Drill:** stop/block primary API until witness threshold → check Workflow execution →
+`kubectl get deploy -A` on standby shows replicas ≥ 1 → run `failback-notes`.
+
+**Still not automated:** Velero restore (data), failback, Argo full sync policy restore.
 
 ---
 
@@ -177,8 +200,11 @@ gh run watch -R dakaii/fantastic-spoon
 |---------|-----|
 | Witness always unhealthy | `k3s_api_source_ranges` / firewall; CP NAT IP in `PRIMARY_API_URL`; test `curl -k https://CP:6443/readyz` from an external host |
 | Scheduler 403 | Gen2 needs `roles/run.invoker` + OIDC audience (fixed in TF) |
-| Function build fails | Enable `run`, `cloudbuild`, `artifactregistry` via `gcp-enable-apis.sh` |
+| Function build fails | Enable `run`, `cloudbuild`, `artifactregistry`, `secretmanager` via `gcp-enable-apis.sh` |
 | DNS never flips | TCP HC on LB:443; Traefik up on primary; `primary_lb_ip` / `standby_lb_ip` correct |
+| Level C activate 500 kubeconfig | Re-run `./scripts/seed-standby-kubeconfig.sh`; confirm secret versions |
+| Level C timeout / connection | Standby `k3s_api_source_ranges` must allow CF egress (lab `0.0.0.0/0`) |
+| Apps scale then go back to 0 | Argo selfHeal — activate pauses sync; re-check Applications |
 | GHA cannot enable APIs | Re-run `./scripts/gcp-setup-github-actions.sh --full` (grants `serviceUsageAdmin`) |
 
 ---
@@ -187,7 +213,7 @@ gh run watch -R dakaii/fantastic-spoon
 
 - [ ] Witness runs on schedule; Pub/Sub receives alerts on simulated outage  
 - [ ] (Optional) `app.<domain>` fails over to standby LB when primary HC fails  
-- [ ] Documented/manual path activates apps on standby  
+- [ ] Level C path practiced (manual **or** `enable_level_c_automation`)  
 - [ ] Failback procedure documented and practiced once  
 
-Then you may merge/run **VPN V1** (`vpn-gateways-gcp`) as a separate additive feature (single city is enough).
+VPN cities remain a separate additive feature (`vpn-gateways-gcp`).

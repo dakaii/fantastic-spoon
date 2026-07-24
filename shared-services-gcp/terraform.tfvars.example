@@ -14,6 +14,12 @@ app_subdomain = "app"
 enable_witness            = true
 create_firestore_database = true
 
+# Level C automation (default off). Requires:
+#   1. ./scripts/seed-standby-kubeconfig.sh
+#   2. standby k3s_api_source_ranges open for CF egress (lab 0.0.0.0/0)
+# enable_level_c_automation = true
+# standby_kubeconfig_secret_id = "hybrid-k8s-standby-kubeconfig"
+
 # Paths to cluster Terraform state (defaults work after primary + standby apply)
 # primary_state_path = "../primary-cluster-gcp/terraform.tfstate"
 # standby_state_path = "../cloud-services-gcp/terraform.tfstate"

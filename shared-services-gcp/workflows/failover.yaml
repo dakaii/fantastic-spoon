@@ -1,4 +1,5 @@
-# Failover workflow — mirrors AWS Step Functions placeholder steps
+# Failover workflow — Level A notify + optional Level C activate-apps Cloud Function
+# Templated by Terraform (templatefile). $${...} = Workflows expression.
 main:
   params: [input]
   steps:
@@ -11,15 +12,38 @@ main:
               - data: $${base64.encode(json.encode({"subject": "Failover Workflow Started", "message": "Failover triggered. Reason: " + input.reason}))}
         result: startNotify
 
-    - restoreVeleroBackup:
+    - veleroNote:
         assign:
-          - restoreStatus: "velero_restore_pending"
-        next: activateStandbyArgoCD
+          - restoreStatus: "velero_not_automated_see_hint"
+        next: levelC
 
-    - activateStandbyArgoCD:
+    - levelC:
+%{ if enable_level_c ~}
+        call: http.post
+        args:
+          url: ${activate_url}
+          auth:
+            type: OIDC
+            audience: ${activate_url}
+          timeout: 120
+          headers:
+            Content-Type: "application/json"
+          body:
+            reason: $${input.reason}
+        result: activateResult
+        next: assignLevelC
+%{ else ~}
         assign:
-          - argocdStatus: "argocd_activation_pending"
+          - levelCStatus: "disabled_run_failover_gcp_sh_activate_apps"
         next: notifyFailoverComplete
+%{ endif ~}
+
+%{ if enable_level_c ~}
+    - assignLevelC:
+        assign:
+          - levelCStatus: $${activateResult.body}
+        next: notifyFailoverComplete
+%{ endif ~}
 
     - notifyFailoverComplete:
         call: googleapis.pubsub.v1.projects.topics.publish
@@ -27,11 +51,11 @@ main:
           topic: ${pubsub_topic}
           body:
             messages:
-              - data: $${base64.encode(json.encode({"subject": "FAILOVER NOTIFY (Level A/B)", "message": "Witness/DNS path signaled. Level C apps are NOT restored by this Workflow — run ./scripts/failover-gcp.sh activate-apps on standby."}))}
+              - data: $${base64.encode(json.encode({"subject": "${notify_subject}", "message": "${notify_message}"}))}
         next: done
 
     - done:
         return:
           status: complete
           velero: $${restoreStatus}
-          argocd: $${argocdStatus}
+          level_c: $${levelCStatus}
