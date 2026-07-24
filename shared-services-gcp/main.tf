@@ -256,6 +256,109 @@ resource "google_cloud_scheduler_job" "witness" {
   }
 }
 
+# --- Level C activate-apps (opt-in) ---
+# Secret must exist first: ./scripts/seed-standby-kubeconfig.sh
+
+data "google_secret_manager_secret" "standby_kubeconfig" {
+  count = var.enable_witness && var.enable_level_c_automation ? 1 : 0
+
+  secret_id = var.standby_kubeconfig_secret_id
+}
+
+resource "google_service_account" "activate" {
+  count = var.enable_witness && var.enable_level_c_automation ? 1 : 0
+
+  account_id   = "${var.project_name}-activate"
+  display_name = "Level C activate-apps Cloud Function"
+}
+
+resource "google_secret_manager_secret_iam_member" "activate_accessor" {
+  count = var.enable_witness && var.enable_level_c_automation ? 1 : 0
+
+  secret_id = data.google_secret_manager_secret.standby_kubeconfig[0].id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.activate[0].email}"
+}
+
+data "archive_file" "activate" {
+  count = var.enable_witness && var.enable_level_c_automation ? 1 : 0
+
+  type        = "zip"
+  source_dir  = "${path.module}/cloud_function_activate"
+  output_path = "${path.module}/cloud_function_activate/activate.zip"
+  excludes = [
+    "activate.zip",
+    "__pycache__",
+    "*.pyc",
+  ]
+}
+
+resource "google_storage_bucket_object" "activate" {
+  count = var.enable_witness && var.enable_level_c_automation ? 1 : 0
+
+  name   = "activate-${data.archive_file.activate[0].output_md5}.zip"
+  bucket = google_storage_bucket.witness_source[0].name
+  source = data.archive_file.activate[0].output_path
+}
+
+resource "google_cloudfunctions2_function" "activate" {
+  count = var.enable_witness && var.enable_level_c_automation ? 1 : 0
+
+  name        = "${var.project_name}-activate-apps"
+  location    = var.gcp_region
+  description = "Level C: scale standby apps when failover Workflow runs"
+
+  build_config {
+    runtime     = "python312"
+    entry_point = "activate_apps"
+    source {
+      storage_source {
+        bucket = google_storage_bucket.witness_source[0].name
+        object = google_storage_bucket_object.activate[0].name
+      }
+    }
+  }
+
+  service_config {
+    available_memory                 = "512M"
+    timeout_seconds                  = 120
+    service_account_email            = google_service_account.activate[0].email
+    ingress_settings                 = "ALLOW_ALL"
+    max_instance_request_concurrency = 1
+
+    environment_variables = {
+      GCP_PROJECT                 = var.gcp_project
+      STANDBY_KUBECONFIG_SECRET   = var.standby_kubeconfig_secret_id
+      GCP_REGION                  = var.gcp_region
+    }
+  }
+
+  depends_on = [
+    google_secret_manager_secret_iam_member.activate_accessor,
+  ]
+}
+
+# Workflow SA (witness SA) may invoke activate function
+resource "google_cloud_run_service_iam_member" "activate_run_invoker" {
+  count = var.enable_witness && var.enable_level_c_automation ? 1 : 0
+
+  project  = google_cloudfunctions2_function.activate[0].project
+  location = google_cloudfunctions2_function.activate[0].location
+  service  = google_cloudfunctions2_function.activate[0].name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.witness[0].email}"
+}
+
+resource "google_cloudfunctions2_function_iam_member" "activate_invoker" {
+  count = var.enable_witness && var.enable_level_c_automation ? 1 : 0
+
+  project        = google_cloudfunctions2_function.activate[0].project
+  location       = google_cloudfunctions2_function.activate[0].location
+  cloud_function = google_cloudfunctions2_function.activate[0].name
+  role           = "roles/cloudfunctions.invoker"
+  member         = "serviceAccount:${google_service_account.witness[0].email}"
+}
+
 # --- Cloud Workflows failover ---
 
 resource "google_workflows_workflow" "failover" {
@@ -263,10 +366,14 @@ resource "google_workflows_workflow" "failover" {
 
   name            = "${var.project_name}-failover"
   region          = var.gcp_region
-  description     = "Automated failover workflow for hybrid k8s platform"
+  description     = "Failover workflow — notify + optional Level C activate-apps"
   service_account = google_service_account.witness[0].id
 
   source_contents = templatefile("${path.module}/workflows/failover.yaml", {
-    pubsub_topic = google_pubsub_topic.failover[0].id
+    pubsub_topic     = google_pubsub_topic.failover[0].id
+    enable_level_c   = var.enable_level_c_automation
+    activate_url     = var.enable_level_c_automation ? google_cloudfunctions2_function.activate[0].service_config[0].uri : ""
+    notify_subject   = var.enable_level_c_automation ? "FAILOVER Level C attempted" : "FAILOVER NOTIFY (Level A/B)"
+    notify_message   = var.enable_level_c_automation ? "Witness fired; Workflow called activate-apps. Verify standby pods and DNS. Velero restore is still manual if you need PVC data." : "Witness/DNS path signaled. Level C apps are NOT restored — run ./scripts/failover-gcp.sh activate-apps or set enable_level_c_automation=true after seeding kubeconfig."
   })
 }

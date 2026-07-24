@@ -10,5 +10,8 @@ project_name = "hybrid-k8s"
 ssh_public_key = "ssh-ed25519 AAAA... you@host"
 admin_cidr     = "203.0.113.10/32"
 
+# Lab: allow Cloud Function Level C activate-apps to reach :6443 (same tradeoff as primary witness)
+# k3s_api_source_ranges = ["0.0.0.0/0"]
+
 standby_node_count   = 2
 standby_machine_type = "e2-small"

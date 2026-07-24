@@ -135,6 +135,8 @@ app_subdomain = "${APP_SUBDOMAIN:-app}"
 
 enable_witness            = true
 create_firestore_database = ${CREATE_FIRESTORE_DATABASE:-true}
+# Level C: seed kubeconfig first, then set true — see docs/PHASE-4-RUNBOOK.md
+enable_level_c_automation = ${ENABLE_LEVEL_C_AUTOMATION:-false}
 EOF
     log "Created ${path}"
     return

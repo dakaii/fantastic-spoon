@@ -39,11 +39,12 @@ terraform apply
 | AWS equivalent | GCP service | Status |
 |----------------|-------------|--------|
 | Lambda witness | Cloud Function Gen2 + Scheduler | Implemented |
-| Step Functions | Cloud Workflows | Notify + Velero/Argo **stubs** |
+| Step Functions | Cloud Workflows | Notify + optional Level C activate-apps CF |
 | DynamoDB state | Firestore | Implemented |
 | SNS alerts | Pub/Sub | Implemented |
 | Route53 failover | Cloud DNS primary/backup | Gated on `domain_name` |
 
-Manual app activation: `./scripts/failover-gcp.sh activate-apps`
+Level C apps: `./scripts/failover-gcp.sh activate-apps` (manual) or
+`enable_level_c_automation=true` after `./scripts/seed-standby-kubeconfig.sh`
 
 See [docs/GCP-ARCHITECTURE.md](../docs/GCP-ARCHITECTURE.md).

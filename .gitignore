@@ -11,6 +11,7 @@ crash.log
 # Lambda / Cloud Function build artifacts
 shared-services/lambda/*.zip
 shared-services-gcp/cloud_function/witness.zip
+shared-services-gcp/cloud_function_activate/activate.zip
 
 # Ansible
 *.retry

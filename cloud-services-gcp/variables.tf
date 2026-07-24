@@ -53,6 +53,12 @@ variable "admin_cidr" {
   type        = string
 }
 
+variable "k3s_api_source_ranges" {
+  description = "CIDRs allowed to reach k3s API :6443. Empty = admin_cidr only. For Phase 4 Level C activate-apps (Cloud Function), lab option [\"0.0.0.0/0\"] — same tradeoff as primary witness."
+  type        = list(string)
+  default     = []
+}
+
 variable "backup_retention_days" {
   description = "GCS lifecycle retention for Velero backups"
   type        = number

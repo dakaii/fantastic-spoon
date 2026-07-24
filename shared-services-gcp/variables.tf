@@ -62,6 +62,24 @@ variable "enable_witness" {
   default     = true
 }
 
+variable "enable_level_c_automation" {
+  description = <<-EOT
+    When true (and enable_witness), Workflow calls activate-apps Cloud Function to
+    scale standby Deployments. Requires Secret Manager kubeconfig
+    (./scripts/seed-standby-kubeconfig.sh) and standby :6443 reachable from the
+    internet (lab: k3s_api_source_ranges = ["0.0.0.0/0"] on cloud-services-gcp).
+    Default false — operator path remains ./scripts/failover-gcp.sh activate-apps.
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "standby_kubeconfig_secret_id" {
+  description = "Secret Manager secret id holding standby kubeconfig YAML"
+  type        = string
+  default     = "hybrid-k8s-standby-kubeconfig"
+}
+
 variable "create_firestore_database" {
   description = "Create Firestore (default) DB for witness state. Set false if project already has one."
   type        = bool

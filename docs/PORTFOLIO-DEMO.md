@@ -110,12 +110,14 @@ gcloud functions logs read hybrid-k8s-witness --gen2 --region=us-central1 --limi
 ```
 
 Talk: Cloud Function probes primary `/readyz`; Cloud DNS can flip A records to standby
-LB. **Level C app activation is still manual** (`activate-apps`) — say that honestly.
+LB. Level C **scale** can be automated (`enable_level_c_automation` → activate-apps CF);
+**Velero restore / failback** stay operator-driven — say that honestly.
 
 ### 6. Optional live Level C (only if standby is warm)
 
 ```bash
-# After copying standby kubeconfig:
+./scripts/failover-gcp.sh status   # shows if automation flag is on
+# Manual:
 STANDBY_KUBECONFIG=~/.kube/hybrid-standby.yaml ./scripts/failover-gcp.sh activate-apps
 ```
 
@@ -136,7 +138,7 @@ Do **not** simulate a real outage mid-interview unless you’ve rehearsed DNS cu
 | Creating a GCP project / fixing `admin_cidr` | Ops rabbit hole |
 | `kubectl get pods -n vpn` | V1 has **no** vpn namespace — host WireGuard VM |
 | “Grafana only works over the VPN” | False — port-forward; consumer tunnel is egress |
-| Claiming fully automated app failover | Phase 4 Level C is operator-assisted |
+| Claiming fully automated DR including PVC restore | Level C auto = scale only; Velero/failback still manual |
 
 ---
 
@@ -172,4 +174,4 @@ GHA destroy workflows require Environment **`gcp-destroy`** (required reviewers)
 
 - Designed a portable hybrid k3s platform (Terraform provisioners + Ansible bootstrap + Argo CD) with warm standby and Velero backups on GCP.
 - Built an additive WireGuard consumer VPN (full-tunnel city exits; `us` + optional `hk`) with Prometheus/Grafana peer and host health.
-- Implemented Cloud Function witness + Cloud DNS failover; Level C app activation on standby is operator-assisted (`failover-gcp.sh`).
+- Implemented Cloud Function witness + Cloud DNS failover; optional Level C automation scales standby apps via Workflow (Velero restore/failback remain operator-driven).

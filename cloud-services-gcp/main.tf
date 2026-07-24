@@ -53,7 +53,7 @@ resource "google_compute_firewall" "standby_k3s_api" {
     ports    = ["6443"]
   }
 
-  source_ranges = [var.admin_cidr]
+  source_ranges = length(var.k3s_api_source_ranges) > 0 ? var.k3s_api_source_ranges : [var.admin_cidr]
   target_tags   = ["${var.project_name}-standby"]
 }
 
